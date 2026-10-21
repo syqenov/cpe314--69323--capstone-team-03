@@ -57,3 +57,19 @@ WaitlistEntry
 adopter_id
 An adopter can wait on multiple animals
 
+3. Feature Checklist - Taghoy, Cheznie
+Check off which mandatory requirement each planned feature will satisfy:
+
+| Planned Feature | Requirement(s) It Satisfies |
+|----------------|----------------------------|
+| Animal types: Dog, Cat, Other (one abstract class + three concrete classes) | **Object-Oriented Design:** Creates a main Animal blueprint with specialized sub-types that calculate their own adoption fees and care schedules. |
+| Queue waitlist per animal (first person in line gets served first) | **Data Structure / Recursion:** Uses a Queue (first-come, first-served line) for people waiting to adopt. |
+| Stack to undo last status change | **Data Structure / Recursion:** Uses a Stack, like a Ctrl+Z for status changes, powering the "Undo Last Action" button. |
+| Tree for breeds (Dog > Sporting Group > Retriever > Golden Retriever) searched with recursion | **Data Structure / Recursion:** Uses a recursive search that digs through multi-level breed categories no matter how many levels deep. |
+| JUnit 5 tests (at least 6): fee calculation per subtype, queue order, undo on an empty stack, recursive search at shallow and deep levels | **Automated Testing:** Tests normal and edge cases for the core logic classes. |
+| SQLite database with PreparedStatement for animals, adopters, and adoption records | **Data Modeling + Database:** Stores shelter animals, adopters, and adoption history locally using SQLite and JDBC. |
+| Call Dog CEO API and TheCatAPI, read JSON, use images/breeds in app | **REST API Consumption:** Retrieves live animal data from public APIs and displays the parsed information in the application. |
+| Swing GUI with buttons and combo boxes (list animal, import CSV, record interest, mark adopted, view analytics) | **Event-Driven GUI:** Provides an interactive interface for shelter staff through buttons, forms, and lists. |
+| Import historical intake/adoption CSV on a background thread (SwingWorker) | **Concurrency:** Runs long imports in the background so the application remains responsive. |
+| Analyze most-adopted breed/species and average shelter stay length | **Data Mining:** Performs aggregation and frequency analysis on shelter data. |
+| Bar chart of the mining results, with labeled axes and title | **Data Visualization:** Displays data mining results in a properly labeled chart. |
