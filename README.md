@@ -49,3 +49,31 @@ Check off which mandatory requirement each planned feature will satisfy:
 | Import historical intake/adoption CSV on a background thread (SwingWorker)                                                                | **Concurrency:** Runs long imports in the background so the application remains responsive.                                                       |
 | Analyze most-adopted breed/species and average shelter stay length                                                                        | **Data Mining:** Performs aggregation and frequency analysis on shelter data.                                                                     |
 | Bar chart of the mining results, with labeled axes and title                                                                              | **Data Visualization:** Displays data mining results in a properly labeled chart.                                                                 |
+
+## 4. Task Split - Elizar
+| Member | Primary Responsibility (this milestone) |
+|----------|----------------------------------------|
+| **Sofia Yvonne Enovero** | OOD model and class hierarchy, Queue/Stack implementation, recursive tree search |
+| **Shann Michael Agang** | Swing GUI and event handlers |
+| **Cleint Lausa** | SQLite/JDBC data layer and DAOs |
+| **Kyle Cheznie Taghoy** | REST API client, JSON parsing, and CSV parsing/validation |
+| **Aeisha Mae Elizar** | Concurrency (import/API workers), analytics, and chart generation |
+
+> **Note:** Each team member is responsible for writing tests for their own module.
+
+---
+
+## 5. Public APIs You Plan to Use
+
+### Dog API
+- **Website:** https://thecatapi.com
+- **Purpose:** Provides cat images and breed information; most features require a free API key.
+
+---
+
+## 6. Risks / Open Questions
+The following items require further clarification or may present implementation challenges:
+
+- How should the application handle situations when an external API becomes unavailable or experiences downtime?
+- Should the SQLite database file be stored within the project directory or in a separate location?
+- Do the JUnit 5 tests need to run successfully without a database connection or network access?
