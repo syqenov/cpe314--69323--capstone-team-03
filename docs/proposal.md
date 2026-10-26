@@ -1,16 +1,13 @@
-# cpe314--69323--capstone-team-03
+## cpe314--69323--capstone-team-03
 
-CPE 314 capstone project — Pet Shelter &amp; Adoption Tracker
+# CPE 314 Capstone Project Proposal — Pet Shelter &amp; Adoption Tracker
 
-## 1. One paragraph Pitch - Enovero
+## 1. One paragraph Pitch 
 
 The Pet Shelter & Adoption Tracker is an offline-first Java desktop application designed to help animal shelter staff and volunteers transition away from scattered spreadsheets and paper records into a centralized system. The app streamlines daily operations by modeling species with custom care schedules, managing adoption waitlists using queues, supporting status undo actions via a stack, and enabling historical log imports from CSV files. Integrated pet APIs (Dog CEO API and TheCatAPI) auto-fill sample images and breed details, while built-in analytics render adoption trends and stay durations as visual bar charts. Ultimately, the
 system empowers shelter teams to make data-driven decisions and efficiently manage animals from intake through final adoption.
 
 ## 2. Entity-Relationship Sketch
-
-(List your entities, their key attributes, and how they relate. Text notation is fine, e.g., `Member(id, name) --> Loan(id, memberId FK)`, `Book(id, title)`)
-
 ### Entity Attributes
 
 | Entity         | Key Attributes                                                                                                        |
@@ -32,13 +29,10 @@ system empowers shelter teams to make data-driven decisions and efficiently mana
 | Animal         | 1:M          | WaitlistEntry  | animal_id            | An animal can have many adopters waiting                                                              |
 | Adopter        | 1:M          | WaitlistEntry  | adopter_id           | An adopter can wait on multiple animals                                                               |
 
-## 3. Feature Checklist - Taghoy, Cheznie
-
-Check off which mandatory requirement each planned feature will satisfy:
-
+## 3. Feature Checklist 
 | Planned Feature                                                                                                                           | Requirement(s) It Satisfies                                                                                                                       |
 | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Animal types: Dog, Cat, Other (one abstract class + three concrete classes)                                                               | **Object-Oriented Design:** Creates a main Animal blueprint with specialized sub-types that calculate their own adoption fees and care schedules. |
+| Animal types: Dog and Cat (one abstract class + three concrete classes)                                                               | **Object-Oriented Design:** Creates a main Animal blueprint with specialized sub-types that calculate their own adoption fees and care schedules. |
 | Queue waitlist per animal (first person in line gets served first)                                                                        | **Data Structure / Recursion:** Uses a Queue (first-come, first-served line) for people waiting to adopt.                                         |
 | Stack to undo last status change                                                                                                          | **Data Structure / Recursion:** Uses a Stack, like a Ctrl+Z for status changes, powering the "Undo Last Action" button.                           |
 | Tree for breeds (Dog > Sporting Group > Retriever > Golden Retriever) searched with recursion                                             | **Data Structure / Recursion:** Uses a recursive search that digs through multi-level breed categories no matter how many levels deep.            |
@@ -50,22 +44,22 @@ Check off which mandatory requirement each planned feature will satisfy:
 | Analyze most-adopted breed/species and average shelter stay length                                                                        | **Data Mining:** Performs aggregation and frequency analysis on shelter data.                                                                     |
 | Bar chart of the mining results, with labeled axes and title                                                                              | **Data Visualization:** Displays data mining results in a properly labeled chart.                                                                 |
 
-## 4. Task Split - Elizar
+## 4. Task Split 
 | Member | Primary Responsibility (this milestone) |
-|----------|----------------------------------------|
-| **Sofia Yvonne Enovero** | OOD model and class hierarchy, Queue/Stack implementation, recursive tree search |
-| **Shann Michael Agang** | Swing GUI and event handlers |
-| **Cleint Lausa** | SQLite/JDBC data layer and DAOs |
-| **Kyle Cheznie Taghoy** | REST API client, JSON parsing, and CSV parsing/validation |
-| **Aeisha Mae Elizar** | Concurrency (import/API workers), analytics, and chart generation |
-
-> **Note:** Each team member is responsible for writing tests for their own module.
-
+| --- | --- |
+| Sofia Yvonne Enovero | Team Lead |
+| Shann Michael Agang | UI Designer/Developer |
+| Cleint Lausa | Developer |
+| Kyle Cheznie Taghoy | QA (Quality Assurance) |
+| Aeisha Mae Elizar | Database Admin |
 ---
 
 ## 5. Public APIs You Plan to Use
 
 ### Dog API
+- **Website:**  https://dog.ceo/dog-api/documentation
+- **Purpose:** Provides free dog images and breed lists without needing an API key.
+### Cat API
 - **Website:** https://thecatapi.com
 - **Purpose:** Provides cat images and breed information; most features require a free API key.
 
@@ -77,3 +71,7 @@ The following items require further clarification or may present implementation 
 - How should the application handle situations when an external API becomes unavailable or experiences downtime?
 - Should the SQLite database file be stored within the project directory or in a separate location?
 - Do the JUnit 5 tests need to run successfully without a database connection or network access?
+- If a CSV file contains incorrect or missing data, how do we handle it during import?
+- Is there a required CSV format or row count, or can we define our own?
+- Our animal types include “Other”, which neither Dog CEO nor TheCatAPI covers. Is it acceptable for those animals to use a placeholder image? 
+
