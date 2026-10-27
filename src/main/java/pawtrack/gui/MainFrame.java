@@ -1,68 +1,58 @@
-package com.petshelter.gui;
+package pawtrack.gui;
 
-import com.petshelter.api.PetImageServiceFactory;
-import com.petshelter.db.AdopterDao;
-import com.petshelter.db.AdoptionRecordDao;
-import com.petshelter.db.AnimalDao;
-import com.petshelter.db.ClassificationDao;
-import com.petshelter.db.Database;
-import com.petshelter.db.WaitlistDao;
-import com.petshelter.model.Adopter;
-import com.petshelter.model.AdoptionRecord;
-import com.petshelter.model.Animal;
-import com.petshelter.model.AnimalStatus;
-import com.petshelter.model.ClassificationNode;
-import com.petshelter.model.StatusChange;
-import com.petshelter.service.AnalyticsReport;
-import com.petshelter.service.AnalyticsService;
-import com.petshelter.service.ClassificationService;
-import com.petshelter.service.CsvImportResult;
-import com.petshelter.service.CsvImportService;
-import com.petshelter.service.ShelterSeeder;
-import com.petshelter.service.StatusHistoryService;
-import com.petshelter.service.WaitlistService;
+import pawtrack.api.PetImageServiceFactory;
+import pawtrack.db.AdopterDao;
+import pawtrack.db.AdoptionRecordDao;
+import pawtrack.db.AnimalDao;
+import pawtrack.db.ClassificationDao;
+import pawtrack.db.Database;
+import pawtrack.db.WaitlistDao;
+import pawtrack.model.Adopter;
+import pawtrack.model.AdoptionRecord;
+import pawtrack.model.Animal;
+import pawtrack.model.AnimalStatus;
+import pawtrack.model.ClassificationNode;
+import pawtrack.model.StatusChange;
+import pawtrack.service.ClassificationService;
+import pawtrack.service.ShelterSeeder;
+import pawtrack.service.StatusHistoryService;
+import pawtrack.service.WaitlistService;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingWorker;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
 /**
- * Main application window. Wires the domain services to interactive Swing
- * controls and runs long-running work (CSV import, API/image downloads) on
- * background threads.
+ * Main application window (Milestone 1). Wires the domain services to
+ * interactive Swing controls. Sample image downloads run on a background
+ * thread. CSV import and shelter analytics are planned for Milestone 2.
  */
+
+@SuppressWarnings("serial")
 public final class MainFrame extends JFrame {
 
     private static final String ALL_CLASSIFICATIONS = "<All animals>";
@@ -78,17 +68,14 @@ public final class MainFrame extends JFrame {
     private ClassificationService classification;
     private final WaitlistService waitlist = new WaitlistService();
     private final StatusHistoryService history = new StatusHistoryService();
-    private final AnalyticsService analytics = new AnalyticsService();
 
     private final AnimalTableModel tableModel = new AnimalTableModel(waitlist);
     private final JTable animalTable = new JTable(tableModel);
     private final JTextArea logArea = new JTextArea();
-    private final JProgressBar progressBar = new JProgressBar(0, 100);
     private final JLabel statusLabel = new JLabel("Ready");
     private final JComboBox<String> classificationFilter = new JComboBox<>();
     private final JLabel imageLabel = new JLabel();
     private final JLabel imageInfoLabel = new JLabel(" ");
-    private final AnalyticsPanel analyticsPanel = new AnalyticsPanel();
 
     public MainFrame() throws SQLException {
         super("Pet Shelter & Adoption Tracker");
@@ -107,7 +94,6 @@ public final class MainFrame extends JFrame {
         buildUi();
         populateClassificationFilter();
         refreshAnimals();
-        refreshAnalytics();
 
         log("Database ready: " + dbPath);
         log(String.format("Classification tree loaded: %d nodes, depth %d",
@@ -125,19 +111,11 @@ public final class MainFrame extends JFrame {
 
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("Animals", buildAnimalTab());
-        tabs.addTab("Shelter Analytics", analyticsPanel);
         tabs.addTab("Activity Log", new JScrollPane(logArea));
         add(tabs, BorderLayout.CENTER);
 
         add(buildImagePanel(), BorderLayout.EAST);
         add(statusLabel, BorderLayout.SOUTH);
-
-        progressBar.setStringPainted(true);
-        progressBar.setString("");
-        progressBar.setPreferredSize(new Dimension(160, 22));
-        progressBar.setMinimumSize(new Dimension(120, 22));
-
-        analyticsPanel.setRefreshAction(this::refreshAnalytics);
 
         logArea.setEditable(false);
         animalTable.setFillsViewportHeight(true);
@@ -169,7 +147,6 @@ public final class MainFrame extends JFrame {
 
         toolbar.add(button("List / Refresh Animals", this::onRefreshAnimals));
         toolbar.add(button("Filter by Classification", this::onFilterByClassification));
-        toolbar.add(button("Import Intake History (CSV)", this::onImportCsv));
         toolbar.add(button("Record Interest", this::onRecordInterest));
         toolbar.add(button("Mark Adopted", this::onMarkAdopted));
         toolbar.add(button("Undo Last Status Change", this::onUndo));
@@ -184,7 +161,6 @@ public final class MainFrame extends JFrame {
             }
         });
         toolbar.add(classificationFilter);
-        toolbar.add(progressBar);
         // Wrap toolbar in a scroll pane to avoid components stacking awkwardly when width is small
         JScrollPane toolbarScroll = new JScrollPane(toolbar, JScrollPane.VERTICAL_SCROLLBAR_NEVER,
                 JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
@@ -265,46 +241,6 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    private void onImportCsv() {
-        JFileChooser chooser = new JFileChooser(new File("data"));
-        chooser.setDialogTitle("Select historical intake/adoption CSV");
-        chooser.setFileFilter(new FileNameExtensionFilter("CSV files", "csv"));
-        Path sample = Paths.get("data", "intake_history.csv");
-        if (Files.exists(sample)) {
-            chooser.setSelectedFile(sample.toFile());
-        }
-        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
-            return;
-        }
-        final Path path = chooser.getSelectedFile().toPath();
-        progressBar.setValue(0);
-        progressBar.setString("Importing...");
-        statusLabel.setText("Importing " + path.getFileName() + " on a background thread...");
-
-        final ImportWorker worker = new ImportWorker(new CsvImportService(database, classification), path);
-        worker.addPropertyChangeListener(event -> {
-            if ("progress".equals(event.getPropertyName())) {
-                int value = (int) event.getNewValue();
-                progressBar.setValue(value);
-                progressBar.setString(value + "%");
-            } else if ("state".equals(event.getPropertyName())
-                    && event.getNewValue() == SwingWorker.StateValue.DONE) {
-                try {
-                    CsvImportResult result = worker.get();
-                    progressBar.setString("Done");
-                    statusLabel.setText(result.summary());
-                    log("Import finished: " + result.summary());
-                    refreshAnimals();
-                    refreshAnalytics();
-                } catch (Exception failure) {
-                    progressBar.setString("Failed");
-                    error("Import failed", failure);
-                }
-            }
-        });
-        worker.execute();
-    }
-
     private void onRecordInterest() {
         Animal animal = selectedAnimal();
         if (animal == null) {
@@ -330,7 +266,6 @@ public final class MainFrame extends JFrame {
                 history.record(animal.getId(), previous, AnimalStatus.PENDING);
             }
             refreshAnimals();
-            refreshAnalytics();
             log(String.format("Interest recorded: %s is #%d in the waitlist for %s",
                     persisted.getName(), position, animal.getName()));
             statusLabel.setText("Interest recorded for " + animal.getName());
@@ -367,7 +302,6 @@ public final class MainFrame extends JFrame {
             waitlistDao.deleteByAnimal(animal.getId());
 
             refreshAnimals();
-            refreshAnalytics();
             String message = String.format("Adopted %s to %s for $%.2f", animal.getName(), persisted.getName(),
                     animal.adoptionFee());
             if (nextInLine.isPresent()) {
@@ -475,19 +409,6 @@ public final class MainFrame extends JFrame {
             tableModel.setAnimals(animalDao.findAll());
         } catch (SQLException failure) {
             error("Could not load animals", failure);
-        }
-    }
-
-    private void refreshAnalytics() {
-        try {
-            List<Animal> animals = animalDao.findAll();
-            List<AdoptionRecord> records = recordDao.findAll();
-            AnalyticsReport report = analytics.analyze(animals, records);
-            Map<Integer, List<Animal>> grouped = AnalyticsService.groupByClassification(animals);
-            Map<String, Long> classCounts = analytics.adoptionCountByClassification(classification.root(), grouped);
-            analyticsPanel.showReport(report, classCounts, waitlist.totalWaiters());
-        } catch (SQLException failure) {
-            log("Analytics failed: " + failure.getMessage());
         }
     }
 

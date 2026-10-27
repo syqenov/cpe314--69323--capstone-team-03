@@ -3,7 +3,8 @@ package pawtrack.test;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class AppTest {
+// Sample code --- cheznie will update this
+public class AppTest { 
 
     @Test
     public void testInitialSetup() {

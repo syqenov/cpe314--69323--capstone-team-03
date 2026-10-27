@@ -1,7 +1,7 @@
-package com.petshelter.gui;
+package pawtrack.gui;
 
-import com.petshelter.model.Animal;
-import com.petshelter.service.WaitlistService;
+import pawtrack.model.Animal;
+import pawtrack.service.WaitlistService;
 
 import javax.swing.table.AbstractTableModel;
 import java.util.ArrayList;
@@ -11,6 +11,7 @@ import java.util.List;
  * Table model backing the animal list. Kept separate from the frame so it has a
  * single responsibility: turning {@link Animal} objects into table rows.
  */
+@SuppressWarnings("serial")
 public final class AnimalTableModel extends AbstractTableModel {
 
     private static final String[] COLUMNS = {

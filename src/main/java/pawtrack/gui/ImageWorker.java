@@ -1,8 +1,8 @@
-package com.petshelter.gui;
+package pawtrack.gui;
 
-import com.petshelter.api.HttpJson;
-import com.petshelter.api.PetImageResult;
-import com.petshelter.api.PetImageService;
+import pawtrack.api.HttpJson;
+import pawtrack.api.PetImageResult;
+import pawtrack.api.PetImageService;
 
 import javax.swing.ImageIcon;
 import javax.swing.SwingWorker;
