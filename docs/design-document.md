@@ -31,7 +31,7 @@
 
 | Member | Primary Responsibility (this milestone) |
 | --- | --- |
-| Sofia Yvonne Enovero | Team Lead |
+| Sofia Yvonne Enovero | Team Lead / Developer |
 | Shann Michael Agang | UI Designer/Developer |
 | Cleint Lausa | Developer |
 | Kyle Cheznie Taghoy | QA (Quality Assurance) |
