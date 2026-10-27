@@ -1,21 +1,46 @@
 package pawtrack.model;
 
-
 import java.time.LocalDate;
 
-public class Dog extends Animal {
-    public Dog(int id, String name, int ageMonths, LocalDate intakeDate,
-               AnimalStatus status, int classificationId, String imageUrl) {
-        super(id, name, ageMonths, intakeDate, status, classificationId, imageUrl);
+public final class Dog extends Animal {
+
+    public static final double PUPPY_FEE = 300.0;
+    public static final double STANDARD_FEE = 250.0;
+    public static final double SENIOR_FEE = 100.0;
+    public static final int SENIOR_AGE_MONTHS = 84; // 7 years
+
+    public Dog(int id, String name, String breed, int ageMonths,
+               LocalDate intakeDate, AnimalStatus status) {
+        super(id, name, breed, ageMonths, intakeDate, status);
     }
 
-    @Override public Species species() { return Species.DOG; }
-
-    @Override public double calculateAdoptionFee() {
-        return getAgeMonths() < 12 ? 2000.0 : 1500.0;   // 1,500 plus 500 under 12 months
+    public Dog(String name, String breed, int ageMonths, LocalDate intakeDate) {
+        this(0, name, breed, ageMonths, intakeDate, AnimalStatus.INTAKE);
     }
 
-    @Override public String getCareSchedule() { return "Walk 2x/day, vaccines"; }
+    @Override
+    public Species species() {
+        return Species.DOG;
+    }
 
-    @Override protected int seniorThresholdMonths() { return 96; }
+    @Override
+    public boolean isSenior() {
+        return getAgeMonths() >= SENIOR_AGE_MONTHS;
+    }
+
+    @Override
+    public double adoptionFee() {
+        if (isJuvenile()) {
+            return PUPPY_FEE;
+        }
+        if (isSenior()) {
+            return SENIOR_FEE;
+        }
+        return STANDARD_FEE;
+    }
+
+    @Override
+    public String careSchedule() {
+        return "2 walks/day, bath every 4 weeks, monthly vet check, annual vaccinations, daily enrichment play";
+    }
 }
