@@ -1,5 +1,3 @@
 package pawtrack.model;
 
-public class AnimalStatus {
-
-}
+public enum AnimalStatus { AVAILABLE, PENDING, ADOPTED, RETURNED }

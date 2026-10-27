@@ -1,5 +1,3 @@
 package pawtrack.model;
 
-public class Species {
-
-}
+public enum Species { DOG, CAT }
