@@ -85,6 +85,28 @@
 | Kyle Cheznie Taghoy | QA (Quality Assurance) |
 | Aeisha Mae Elizar | Database Admin |
 
+**Database layer**
+ 
+| Class | Single responsibility | Why it follows SRP |
+|---|---|---|
+| **Database** | Opens the SQLite connection, enables foreign keys, and creates the tables. | Connection and schema setup in one place. |
+| **AnimalDao, AdopterDao, AdoptionRecordDao, ClassificationDao, WaitlistDao** | Each runs the SQL (PreparedStatement) for one table. | One class per table, so a change to one table doesn't touch the others. |
+| **Adopter, AdoptionRecord** | Hold adopter and adoption data. | Data only. |
+ 
+**GUI layer**
+ 
+| Class | Single responsibility | Why it follows SRP |
+|---|---|---|
+| **MainFrame** | Builds the window and connects the controls to the services and DAOs. | It handles screen events and delegates the real work to other classes. |
+| **AnimalTableModel** | Feeds animal data to the table. | Display only. |
+| **ImageWorker** | Downloads the sample image on a background thread, so the window doesn't freeze. | Threading for images is in one class. |
+ 
+### Design Rationale: PawTrack
+ 
+The system is built around an abstract Animal class that stores the data every animal shares (id, name, breed, age in months, intake date, status, and classification) and validates it. It declares the behavior that differs by species: species(), adoptionFee(), careSchedule(), and isSenior(). Dog and Cat extend Animal and implement only their own rules: the fee for juvenile, standard, and senior animals, the senior age threshold, and the care schedule. The rest of the application works with Animal references and calls these methods without checking the species, so the same code serves both. A static Animal.create() factory builds the right subclass from a Species, and two enums, Species and AnimalStatus, keep the allowed species and status values in one place.
+ 
+This follows the Single Responsibility Principle. Animal models shared animal data and the contract, and each subclass owns the rules for one species. None of them contains database, GUI, or API code. Those concerns are in separate classes: DAO classes, one per table, run the SQL with PreparedStatement. Services hold the data-structure logic: WaitlistService keeps a first-in, first-out queue of interested adopters, StatusHistoryService keeps the undo stack, and ClassificationService searches the classification tree recursively. Pet images are fetched through the PetImageService interface, with DogCeoImageService and CatApiImageService each responsible for one external API and its JSON, and PetImageServiceFactory choosing the right one. The GUI depends only on the interface, so an API can be changed, replaced, or fail without touching the animal classes, and ImageWorker keeps downloads off the Swing event thread so the window stays responsive.
+ 
 ## 4. Data Model & Database Design
 
 SQLite schema
