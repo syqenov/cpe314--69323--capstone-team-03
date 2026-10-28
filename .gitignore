@@ -23,3 +23,6 @@
 hs_err_pid*
 replay_pid*
 /target/
+
+# SQLite database (generated on first run)
+*.db
