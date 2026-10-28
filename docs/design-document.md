@@ -85,6 +85,40 @@
 | Kyle Cheznie Taghoy | QA (Quality Assurance) |
 | Aeisha Mae Elizar | Database Admin |
 
+### Single Responsibility Principle Justification Table
+ 
+**Class hierarchy (animals)**
+ 
+| Class | Single responsibility | Why it follows SRP |
+|---|---|---|
+| **Animal (abstract)** | Holds the data every animal shares (id, name, breed, age, intake date, status, classification) and validates it. It declares the species-specific methods species(), adoptionFee(), careSchedule(), and isSenior(). | It contains no fee rules, no database code, no GUI code, and no API code. It changes only when the shared animal data or the contract changes. |
+| **Dog** | Applies the dog rules: puppy, standard, and senior fees, the senior age of 84 months, and the dog care schedule. | It changes only when the dog fee or care rules change. |
+| **Cat** | Applies the cat rules: kitten, standard, and senior fees, the senior age of 120 months, and the cat care schedule. | It changes only when the cat fee or care rules change. |
+| **Species (enum)** | Defines the supported species (DOG, CAT) and their display label. | It changes only when a species is added. |
+| **AnimalStatus (enum)** | Defines the animal's status values (INTAKE, AVAILABLE, PENDING, ADOPTED, RETURNED) and converts them to and from labels. | It changes only when the status lifecycle changes. |
+ 
+**Image API classes**
+ 
+| Class | Single responsibility | Why it follows SRP |
+|---|---|---|
+| **PetImageService (interface)** | Defines what the app needs from an image source: providerName(), supports(Species), and fetchRandomImage(String). | The GUI depends on this contract, not on a specific API. |
+| **DogCeoImageService** | Talks only to the Dog CEO API and parses its JSON response. | It changes only if that API changes. |
+| **CatApiImageService** | Talks only to TheCatAPI (including the optional API key) and parses its JSON response. | It changes only if that API changes. |
+| **PetImageServiceFactory** | Chooses the right PetImageService for a species. | Selection logic stays out of the GUI and the services. |
+| **PetImageResult** | Holds one fetched image result (URL, species, breed, provider). | It is data only, with no behavior. |
+| **HttpJson** | Performs the HTTP GET request and returns the JSON text. | Network code is in one place, not repeated in each service. |
+ 
+**Services and data structures**
+ 
+| Class | Single responsibility | Why it follows SRP |
+|---|---|---|
+| **WaitlistService** | Manages each animal's first-come, first-served queue of interested adopters. | It holds only queue logic, with no database or GUI code. |
+| **StatusHistoryService** | Manages the undo stack of status changes. | It holds only stack logic. |
+| **StatusChange** | Holds one status change (animal, from, to) for the undo stack. | Data only. |
+| **ClassificationService** | Searches the classification tree recursively and builds the breed paths. | It holds only tree-search logic. |
+| **ClassificationNode** | Represents one node in the classification tree and walks its children recursively. | It models one tree node and nothing else. |
+| **ShelterSeeder** | Fills an empty database with sample animals. | Demo data is kept out of the other classes. |
+
 **Database layer**
  
 | Class | Single responsibility | Why it follows SRP |
