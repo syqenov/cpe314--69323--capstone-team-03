@@ -85,6 +85,13 @@
 | Kyle Cheznie Taghoy | QA (Quality Assurance) |
 | Aeisha Mae Elizar | Database Admin |
 
+## 3. System Architecture & Object-Oriented Design
+ 
+### Class Hierarchy - PawTrack: Pet Shelter & Adoption Tracker
+ 
+![Class hierarchy diagram](./class-hierarchy.png)
+
+
 ### Single Responsibility Principle Justification Table
  
 **Class hierarchy (animals)**
