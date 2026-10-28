@@ -79,7 +79,7 @@ public final class MainFrame extends JFrame {
 
     public MainFrame() throws SQLException {
         super("Pet Shelter & Adoption Tracker");
-        String dbPath = System.getProperty("petshelter.db", "petshelter.db");
+        String dbPath = System.getProperty("pawtrack.db", "pawtrack.db");
         this.database = Database.openFile(dbPath);
         this.animalDao = new AnimalDao(database);
         this.adopterDao = new AdopterDao(database);
