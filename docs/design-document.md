@@ -150,6 +150,13 @@ This follows the Single Responsibility Principle. Animal models shared animal da
  
 ## 4. Data Model & Database Design
 
+### ER Diagram
+ 
+![Finalized ERD](./erd.png)
+ 
+*Figure 4.1 Finalized ERD. PK = primary key, FK = foreign key, NN = NOT NULL*
+ 
+This section supersedes the preliminary ER sketch in Section 2.
 SQLite schema
 -- Database file: pawtrack.db (created automatically by Database.java on first run)
 -- The app runs PRAGMA foreign_keys = ON on every connection.
