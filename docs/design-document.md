@@ -18,21 +18,21 @@
 
 # Table of Contents
 
-- Pet Shelter & Adoption Tracker ................................................................................................ 1
-  - Table of Contents ................................................................................................................ 2
-  - Revision History ................................................................................................................. 3
-  - 1. Introduction & Project Overview .......................................................................................... 3
-  - 2. Preliminary ER Sketch & Team Role ..................................................................................... 4
-    - Table 1: Preliminary entities and key attributes .................................................................. 5
-    - Table 2: Preliminary relationships and cardinality ................................................................ 5
-    - Table 3: Team members and primary roles ........................................................................ 5
-  - 3. System Architecture & Object-Oriented Design ...................................................................... 6
-    - Class Hierarchy - PawTrack: Pet Shelter & Adoption Tracker ................................................ 6
-    - Single Responsibility Principle Justification Table ............................................................... 6
-    - Design Rationale: PawTrack ............................................................................................... 8
-  - 4. Data Model & Database Design ............................................................................................ 9
-    - ER Diagram .==================================================== 9
-    - SQLite schema .================================================== 9
+- Pet Shelter & Adoption Tracker  ....................................................................................................................... 1
+  - Table of Contents ............................................................................................................................... 2
+  - Revision History .................................................................................................................................. 3
+  - 1. Introduction & Project Overview ........................................................................................ 3
+  - 2. Preliminary ER Sketch & Team Role ................................................................................... 4
+    - Table 1: Preliminary entities and key attributes ....................................................... 5
+    - Table 2: Preliminary relationships and cardinality ................................................... 5
+    - Table 3: Team members and primary roles ................................................................ 5
+  - 3. System Architecture & Object-Oriented Design ........................................................... 6
+    - Class Hierarchy - PawTrack: Pet Shelter & Adoption Tracker ............................. 6
+    - Single Responsibility Principle Justification Table .................................................. 6
+    - Design Rationale: PawTrack ............................................................................................ 8
+  - 4. Data Model & Database Design ......................................................................................... 9
+    - ER Diagram ........................................................................................................................... 9
+    - SQLite schema ..................................................................................................................... 9
    <br>
 ## Revision History
 
@@ -49,11 +49,15 @@
 | 0.2 | Oct. 27, 2026 | Sofia Yvonne Enovero | Update ER diagram |
 | 0.2 | Oct. 27, 2026 | Shann Michael Agang | Add Database SQL Schema |
 
-### Introduction & Project Overview
+<br>
+
+## Introduction & Project Overview
 
   The Pet Shelter & Adoption Tracker is a Java desktop application designed to help animal shelter staff manage intake, waitlists, and adoptions in one offline-first tool. Many small shelters rely on scattered spreadsheets and paper records, making it difficult to track animal stays and adoption demand. Our application centralizes these operations: it models species with distinct care schedules, manages adoption waitlists using queues, enables status undo operations via a stack, and supports bulk historical CSV log imports. Integrated pet APIs (Dog CEO API and TheCatAPI) auto-fill sample images and breed details, while built-in analytics render adoption trends and stay durations as visual bar charts to assist staff in operational planning. 
 
-### Preliminary ER Sketch & Team Roles
+<br>
+
+## Preliminary ER Sketch & Team Roles
 
 ### Table 1: Preliminary Entities and Key Attributes
 
@@ -85,12 +89,15 @@
 | Kyle Cheznie Taghoy | QA (Quality Assurance) |
 | Aeisha Mae Elizar | Database Admin |
 
+<br>
+
 ## 3. System Architecture & Object-Oriented Design
  
 ### Class Hierarchy - PawTrack: Pet Shelter & Adoption Tracker
  
 ![Class hierarchy diagram](./class-hierarchy.png)
 
+<br>
 
 ### Single Responsibility Principle Justification Table
  
@@ -141,13 +148,17 @@
 | **MainFrame** | Builds the window and connects the controls to the services and DAOs. | It handles screen events and delegates the real work to other classes. |
 | **AnimalTableModel** | Feeds animal data to the table. | Display only. |
 | **ImageWorker** | Downloads the sample image on a background thread, so the window doesn't freeze. | Threading for images is in one class. |
- 
+
+<br>
+
 ### Design Rationale: PawTrack
  
 The system is built around an abstract Animal class that stores the data every animal shares (id, name, breed, age in months, intake date, status, and classification) and validates it. It declares the behavior that differs by species: species(), adoptionFee(), careSchedule(), and isSenior(). Dog and Cat extend Animal and implement only their own rules: the fee for juvenile, standard, and senior animals, the senior age threshold, and the care schedule. The rest of the application works with Animal references and calls these methods without checking the species, so the same code serves both. A static Animal.create() factory builds the right subclass from a Species, and two enums, Species and AnimalStatus, keep the allowed species and status values in one place.
  
 This follows the Single Responsibility Principle. Animal models shared animal data and the contract, and each subclass owns the rules for one species. None of them contains database, GUI, or API code. Those concerns are in separate classes: DAO classes, one per table, run the SQL with PreparedStatement. Services hold the data-structure logic: WaitlistService keeps a first-in, first-out queue of interested adopters, StatusHistoryService keeps the undo stack, and ClassificationService searches the classification tree recursively. Pet images are fetched through the PetImageService interface, with DogCeoImageService and CatApiImageService each responsible for one external API and its JSON, and PetImageServiceFactory choosing the right one. The GUI depends only on the interface, so an API can be changed, replaced, or fail without touching the animal classes, and ImageWorker keeps downloads off the Swing event thread so the window stays responsive.
- 
+
+<br>
+
 ## 4. Data Model & Database Design
 
 ### ER Diagram
@@ -155,10 +166,14 @@ This follows the Single Responsibility Principle. Animal models shared animal da
 ![Finalized ERD](./erd.png)
  
 *Figure 4.1 Finalized ERD. PK = primary key, FK = foreign key, NN = NOT NULL*
- 
+
 This section supersedes the preliminary ER sketch in Section 2.
-SQLite schema
+
+<br>
+
+### SQLite schema
 -- Database file: pawtrack.db (created automatically by Database.java on first run)
+
 -- The app runs PRAGMA foreign_keys = ON on every connection.
 
 CREATE TABLE IF NOT EXISTS classification (
@@ -184,6 +199,7 @@ CREATE TABLE IF NOT EXISTS animal (
   status TEXT NOT NULL,
   classification_id INTEGER REFERENCES classification(id)
 );
+
 CREATE TABLE IF NOT EXISTS adoption_record (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   animal_id INTEGER NOT NULL REFERENCES animal(id) ON DELETE CASCADE,
