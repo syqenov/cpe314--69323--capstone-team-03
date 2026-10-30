@@ -163,7 +163,7 @@ This follows the Single Responsibility Principle. Animal models shared animal da
 
 ### ER Diagram
  
-![Finalized ERD](./erd.png)
+![Finalized ERD](./er-diagram.png)
  
 *Figure 4.1 Finalized ERD. PK = primary key, FK = foreign key, NN = NOT NULL*
 
