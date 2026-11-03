@@ -11,7 +11,6 @@ import java.util.List;
  * Table model backing the animal list. Kept separate from the frame so it has a
  * single responsibility: turning {@link Animal} objects into table rows.
  */
-@SuppressWarnings("serial")
 public final class AnimalTableModel extends AbstractTableModel {
 
     private static final String[] COLUMNS = {
