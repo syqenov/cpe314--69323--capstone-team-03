@@ -20,6 +20,12 @@ import java.util.Map;
  */
 public final class AnalyticsService {
 
+    /**
+     * Mines the given dataset.
+     *
+     * @param animals every animal known to the shelter
+     * @param records every completed adoption
+     */
     public AnalyticsReport analyze(List<Animal> animals, List<AdoptionRecord> records) {
         Map<Integer, Animal> byId = new HashMap<>();
         for (Animal animal : animals) {
@@ -61,6 +67,10 @@ public final class AnalyticsService {
     }
 
   
+    /**
+     * Shelter stay in whole days. Negative values (bad historical data where an
+     * adoption predates the intake) are clamped to zero.
+     */
     public static double stayDays(Animal animal, AdoptionRecord record) {
         long days = ChronoUnit.DAYS.between(animal.getIntakeDate(), record.getAdoptionDate());
         return Math.max(0, days);
@@ -100,6 +110,14 @@ public final class AnalyticsService {
         return grouped;
     }
 
+    /**
+     * Recursive roll-up of adopted animals per classification node. Each node's
+     * value is the total for that node <em>plus every descendant</em>, which is
+     * why a plain loop cannot replace this method: the result of each recursive
+     * call feeds its parent's running total.
+     *
+     * @return ordered map of classification path -&gt; adopted animal count
+     */
     public Map<String, Long> adoptionCountByClassification(
             ClassificationNode root, Map<Integer, List<Animal>> animalsByClassificationId) {
         Map<String, Long> result = new LinkedHashMap<>();

@@ -4,6 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Immutable result of a data-mining pass. Every map is ordered from highest to
+ * lowest frequency/aggregate so it can feed the bar chart directly.
+ */
 public record AnalyticsReport(
         int totalAnimals,
         int totalAdoptions,

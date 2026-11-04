@@ -27,6 +27,15 @@ import java.util.Locale;
 import java.util.Map;
 
 
+/**
+ * Bulk importer for the historical intake/adoption CSV log.
+ *
+ * <p>The whole import runs inside a single transaction using {@link AnimalDao},
+ * {@link AdopterDao} and {@link AdoptionRecordDao} (all backed by
+ * {@code PreparedStatement}s). It is intentionally thread-agnostic so the GUI can
+ * run it on a background worker while reporting progress through an
+ * {@link ImportListener}.</p>
+ */
 public final class CsvImportService {
 
     public static final String[] EXPECTED_HEADER = {
