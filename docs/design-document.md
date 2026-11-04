@@ -62,6 +62,7 @@
 | 0.2 | Oct. 27, 2026 | Sofia Yvonne Enovero | Update ER diagram |
 | 0.2 | Oct. 27, 2026 | Shann Michael Agang | Add Database SQL Schema |
 | 0.3 | Nov. 2, 2026 | Kyle Cheznie Taghoy | Add the subsection 5.1 and 5.2 table |
+| 0.3 | Nov. 2, 2026 | Aeisha Elizar | Add Error handling and json example |
 <br>
 
 ## Introduction & Project Overview
@@ -255,3 +256,57 @@ TheCatAPI provides cat images with breed information. It supports API-key authen
 | **Endpoint (HTTP GET)** | **JSON Response Shape** | **Parsing and Use in PawTrack** |
 | --- | --- | --- |
 | https://api.thecatapi.com/v1/images/search?limit=1&has_breeds=1 | A JSON array with one object containing the image id, url, width, height, and a breeds array. | The app parses the array with org.json, extracts the image url, and stores it in a PetImageResult. The image is a random cat image, not matched to the animal’s breed. The caption below the image shows the provider and the animal’s own recorded breed. |
+
+### 5.3 Error Handling
+
+PawTrack keeps working when an external API is unavailable. The image requests run in the background (see Section 6), and the GUI handles these cases:
+
+- Slow or unreachable service: connection and read timeouts stop the request from waiting forever.
+
+- Unsuccessful HTTP response: a status outside 200 to 299 is reported as an error that includes the status code.
+
+- Invalid or missing JSON data: a response that cannot be parsed, or that has no image URL, is reported as an error.
+
+- Image not available: the panel shows “Image unavailable”, the status bar says the fetch failed, and the problem is written to the Activity Log.
+
+- Missing breed: the Dog CEO service falls back to a general random dog image.
+
+A failed request never stops the rest of the application. Recording interest, marking animals adopted, importing history, filtering, undoing status changes, and viewing analytics all use the local SQLite database and do not depend on either API.
+
+### 5.4 Example JSON Responses
+
+- **Dog CEO API, `/breeds/list/all`**: each breed maps to a list of its sub-breeds.
+
+```json
+{
+  "message": {
+    "labrador": [],
+    "retriever": ["chesapeake", "curly", "flatcoated", "golden"]
+  },
+  "status": "success"
+}
+```
+
+- **Dog CEO API, `/breed/{path}/images/random` and `/breeds/image/random`**: both return one image URL in `message`.
+
+```json
+{
+  "message": "https://images.dog.ceo/breeds/retriever-golden/n02099601_1024.jpg",
+  "status": "success"
+}
+```
+
+- **TheCatAPI, `/images/search?limit=1&has_breeds=1`**: an array with one image object.
+
+```json
+[
+  {
+    "id": "aXYvRd7Do",
+    "url": "https://cdn2.thecatapi.com/images/aXYvRd7Do.jpg",
+    "width": 1445,
+    "height": 1080,
+    "breeds": [
+      { "id": "abys", "name": "Abyssinian" }
+    ]
+  }
+]
