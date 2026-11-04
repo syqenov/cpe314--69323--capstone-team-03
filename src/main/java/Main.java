@@ -3,9 +3,7 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import pawtrack.gui.MainFrame;
-/**
- * Application entry point. Launches the Swing GUI on the Event Dispatch Thread.
- */
+
 public final class Main {
 
     private Main() {
