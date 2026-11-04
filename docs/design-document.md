@@ -63,6 +63,7 @@
 | 0.2 | Oct. 27, 2026 | Shann Michael Agang | Add Database SQL Schema |
 | 0.3 | Nov. 2, 2026 | Kyle Cheznie Taghoy | Add the subsection 5.1 and 5.2 table |
 | 0.3 | Nov. 2, 2026 | Aeisha Elizar | Add Error handling and json example |
+| 0.3 | Nov. 2, 2026 | Shann Michael Agang | Added Concurrency Design
 <br>
 
 ## Introduction & Project Overview
@@ -310,3 +311,34 @@ A failed request never stops the rest of the application. Recording interest, ma
     ]
   }
 ]
+```
+## 6. Concurrency Design
+
+PawTrack uses Java Swing’s SwingWorker to run long operations on background threads, so the Event Dispatch Thread (EDT), which handles clicks and repainting, never blocks.
+
+### 6.1 Background Operations
+
+*Table 6. Background Operations and Threading Approach*
+
+| *Operation* | *Background Worker* | *Threading Approach* |
+| --- | --- | --- |
+| Bulk CSV Import | ImportWorker | SwingWorker<CsvImportResult, Void>. doInBackground() calls CsvImportService.importFile(), which reads and validates each row and saves the animals, adopters, and adoption records to SQLite. It reports progress with setProgress(). |
+| Pet Image Retrieval | ImageWorker | SwingWorker<ImageWorker.Result, Void>. doInBackground() asks the PetImageService for an image URL, downloads the image bytes, and scales the image. It returns the image and its provider information. |
+
+### 6.2 How the Background Work Runs
+
+The import is the longest operation. ImportWorker runs it in doInBackground() and publishes a percentage (0 to 100) through the standard progress property. The image worker makes two network calls, one for the image URL and one for the image itself. Neither runs on the EDT.
+
+### 6.3 Keeping the UI Responsive
+
+Swing components may only be changed on the EDT. SwingWorker delivers its progress and state change events on the EDT, so the GUI listens for them:
+
+- While the import runs: the progress event moves the progress bar and its text, and the status bar says the import is running.
+
+- When a worker is finished: the state changes to DONE and the GUI calls get() to read the result. For an import, it shows the summary in the status bar and Activity Log, then refreshes the animal table and the analytics. For an image, it shows the picture and provider.
+
+- If a worker fails: the GUI shows an error message or “Image unavailable” and the application continues.
+
+Because the long work is off the EDT, the window keeps repainting and accepting clicks during an import or an image download, so it never freezes.
+
+
