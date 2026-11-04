@@ -66,6 +66,7 @@ public final class AnalyticsService {
                 average(allStays));
     }
 
+  
     /**
      * Shelter stay in whole days. Negative values (bad historical data where an
      * adoption predates the intake) are clamped to zero.
