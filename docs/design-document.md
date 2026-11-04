@@ -61,7 +61,7 @@
 | 0.2 | Oct. 27, 2026 | Aeisha Mae Elizar | Add Design Rationale |
 | 0.2 | Oct. 27, 2026 | Sofia Yvonne Enovero | Update ER diagram |
 | 0.2 | Oct. 27, 2026 | Shann Michael Agang | Add Database SQL Schema |
-
+| 0.3 | Nov. 2, 2026 | Kyle Cheznie Taghoy | Add the subsection 5.1 and 5.2 table |
 <br>
 
 ## Introduction & Project Overview
@@ -230,3 +230,28 @@ CREATE TABLE IF NOT EXISTS waitlist_entry (
   UNIQUE(animal_id, adopter_id)
 );
 
+## 5. API Integration Design
+
+The Pet Shelter & Adoption Tracker (PawTrack) consumes two public REST APIs to fetch sample pet images. The integrations are hidden behind a common PetImageService interface, and PetImageServiceFactory chooses the right one from the animal’s species. Each service sends an HTTP GET request through HttpJson, parses the JSON response with org.json, and returns the result as a PetImageResult (image URL, species, breed, and provider name). The GUI shows the image and provider in the “Sample Pet Image” panel when staff select an animal and click Fetch Sample Pet Image.
+
+### 5.1 API 1: Dog CEO API (https://dog.ceo/dog-api/)
+
+The Dog CEO API provides dog images and a catalogue of breeds. It needs no API key.
+
+**Table 4. Dog CEO API Integration**
+
+| **Endpoint (HTTP GET)** | **JSON Response Shape** | **Parsing and Use in PawTrack** |
+| --- | --- | --- |
+| https://dog.ceo/api/breeds/list/all | message: an object that maps each breed to a list of sub-breeds. status: request status. | The app reads the object and converts breed and sub-breed pairs into readable names, for example retriever + golden becomes “Golden Retriever”. It uses this list to find the API path that matches the animal’s recorded breed. |
+| https://dog.ceo/api/breed/{path}/images/random | message: a string containing one image URL.  status: request status. | The app extracts the image URL and stores it in a PetImageResult. For example, the path retriever/golden returns a Golden Retriever image. |
+| https://dog.ceo/api/breeds/image/random | message: a string containing a random dog image URL. status: request status. | The app uses this when the animal’s breed is blank, is not in the breed list, or the breed list cannot be loaded, so a dog image is still shown. |
+
+### 5.2 API 2: TheCatAPI (https://thecatapi.com/)
+
+TheCatAPI provides cat images with breed information. It supports API-key authentication but also works without a key at a low rate limit. When configured, the key is read from the CAT_API_KEY environment variable or the cat.api.key system property and sent in the x-api-key header.
+
+**Table 5. TheCatAPI Integration**
+
+| **Endpoint (HTTP GET)** | **JSON Response Shape** | **Parsing and Use in PawTrack** |
+| --- | --- | --- |
+| https://api.thecatapi.com/v1/images/search?limit=1&has_breeds=1 | A JSON array with one object containing the image id, url, width, height, and a breeds array. | The app parses the array with org.json, extracts the image url, and stores it in a PetImageResult. The image is a random cat image, not matched to the animal’s breed. The caption below the image shows the provider and the animal’s own recorded breed. |
