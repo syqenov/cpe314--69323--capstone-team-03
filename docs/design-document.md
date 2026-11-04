@@ -18,21 +18,34 @@
 
 # Table of Contents
 
-- Pet Shelter & Adoption Tracker  ....................................................................................................................... 1
-  - Table of Contents ............................................................................................................................... 2
-  - Revision History .................................................................................................................................. 3
-  - 1. Introduction & Project Overview ........................................................................................ 3
-  - 2. Preliminary ER Sketch & Team Role ................................................................................... 4
-    - Table 1: Preliminary entities and key attributes ....................................................... 5
-    - Table 2: Preliminary relationships and cardinality ................................................... 5
-    - Table 3: Team members and primary roles ................................................................ 5
-  - 3. System Architecture & Object-Oriented Design ........................................................... 6
-    - Class Hierarchy - PawTrack: Pet Shelter & Adoption Tracker ............................. 6
-    - Single Responsibility Principle Justification Table .................................................. 6
-    - Design Rationale: PawTrack ............................................................................................ 8
-  - 4. Data Model & Database Design ......................................................................................... 9
-    - ER Diagram ........................................................................................................................... 9
-    - SQLite schema ..................................................................................................................... 9
+- Pet Shelter & Adoption Tracker  ........................................................................................................................................................... 1
+  - Table of Contents ................................................................................................................................................................... 2
+  - Revision History ...................................................................................................................................................................... 3
+  - 1. Introduction & Project Overview ............................................................................................................................ 3
+  - 2. Preliminary ER Sketch & Team Role ....................................................................................................................... 4
+    - Table 1: Preliminary entities and key attributes ................................................................................... 5
+    - Table 2: Preliminary relationships and cardinality ............................................................................... 5
+    - Table 3: Team members and primary roles ............................................................................................ 5
+  - 3. System Architecture & Object-Oriented Design ............................................................................................... 6
+    - 3.1 Class Hierarchy - PawTrack: Pet Shelter & Adoption Tracker .................................................. 6
+    - 3.2 Single Responsibility Principle Justification Table  ....................................................................... 6
+    - 3.3 Design Rationale: PawTrack ................................................................................................................. 8
+  - 4. Data Model & Database Design ............................................................................................................................. 9
+    - 4.1 ER Diagram ................................................................................................................................................ 9
+    - 4.2 SQLite schema .......................................................................................................................................... 9
+  - 5. API Integration Design.................................................................................................................................................10 
+    - 5.1 API 1: Dog CEO API (https://dog.ceo/dog-api/) .........................................................................10 
+    - 5.2 API 2: TheCatAPI (https://thecatapi.com/) ....................................................................................11 
+    - 5.3 Error Handling...........................................................................................................................................11 
+    - 5.4 Example JSON Responses.....................................................................................................................11 
+  - 6. Concurrency Design.......................................................................................................................................................12 
+    - 6.1 Background Operations.........................................................................................................................12 
+    - 6.2 How the Background Work Runs.......................................................................................................12 
+    - 6.3 Keeping the UI Responsive...................................................................................................................13 
+  - 7. Data Mining & Visualization Design.......................................................................................................................13 
+    - 7.1 Data Mining and Aggregation.............................................................................................................13 
+    - 7.2 Recursive Classification Analysis.........................................................................................................14 
+    - 7.3 Data Visualization.....................................................................................................................................14 
    <br>
 ## Revision History
 
@@ -58,7 +71,7 @@
 <br>
 
 ## Preliminary ER Sketch & Team Roles
-
+![Sketch ERD](./erd.png)
 ### Table 1: Preliminary Entities and Key Attributes
 
 | Entity | Key Attributes |
@@ -93,13 +106,13 @@
 
 ## 3. System Architecture & Object-Oriented Design
  
-### Class Hierarchy - PawTrack: Pet Shelter & Adoption Tracker
+### 3.1 Class Hierarchy - PawTrack: Pet Shelter & Adoption Tracker
  
 ![Class hierarchy diagram](./class-hierarchy.png)
 
 <br>
 
-### Single Responsibility Principle Justification Table
+### 3.2 Single Responsibility Principle Justification Table
  
 **Class hierarchy (animals)**
  
@@ -151,7 +164,7 @@
 
 <br>
 
-### Design Rationale: PawTrack
+### 3.3 Design Rationale: PawTrack
  
 The system is built around an abstract Animal class that stores the data every animal shares (id, name, breed, age in months, intake date, status, and classification) and validates it. It declares the behavior that differs by species: species(), adoptionFee(), careSchedule(), and isSenior(). Dog and Cat extend Animal and implement only their own rules: the fee for juvenile, standard, and senior animals, the senior age threshold, and the care schedule. The rest of the application works with Animal references and calls these methods without checking the species, so the same code serves both. A static Animal.create() factory builds the right subclass from a Species, and two enums, Species and AnimalStatus, keep the allowed species and status values in one place.
  
@@ -161,7 +174,7 @@ This follows the Single Responsibility Principle. Animal models shared animal da
 
 ## 4. Data Model & Database Design
 
-### ER Diagram
+### 4.1 ER Diagram
  
 ![Finalized ERD](./er-diagram.png)
  
@@ -171,7 +184,7 @@ This section supersedes the preliminary ER sketch in Section 2.
 
 <br>
 
-### SQLite schema
+### 4.2 SQLite schema
 -- Database file: pawtrack.db (created automatically by Database.java on first run)
 
 -- The app runs PRAGMA foreign_keys = ON on every connection.
