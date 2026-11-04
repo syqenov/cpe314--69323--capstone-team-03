@@ -63,7 +63,8 @@
 | 0.2 | Oct. 27, 2026 | Shann Michael Agang | Add Database SQL Schema |
 | 0.3 | Nov. 2, 2026 | Kyle Cheznie Taghoy | Add the subsection 5.1 and 5.2 table |
 | 0.3 | Nov. 2, 2026 | Aeisha Elizar | Add Error handling and json example |
-| 0.3 | Nov. 2, 2026 | Shann Michael Agang | Added Concurrency Design
+| 0.3 | Nov. 2, 2026 | Shann Michael Agang | Added Concurrency Design |
+| 0.3 | Nov. 3, 2026 | Sofia Yvonne Enovero | Add 7.1 table and 7.2 subsection |
 <br>
 
 ## Introduction & Project Overview
@@ -340,5 +341,34 @@ Swing components may only be changed on the EDT. SwingWorker delivers its progre
 - If a worker fails: the GUI shows an error message or “Image unavailable” and the application continues.
 
 Because the long work is off the EDT, the window keeps repainting and accepting clicks during an import or an image download, so it never freezes.
+
+## 7. Data Mining & Visualization Design
+
+PawTrack uses the AnalyticsService class to analyze animal and adoption records stored in the SQLite database. It performs frequency analysis to identify the most adopted species and breeds, calculates average shelter stay durations, and aggregates adoption counts across the animal classification hierarchy. The results are organized into an AnalyticsReport and displayed through the application's analytics dashboard.
+
+### 7.1 Data Mining and Aggregation
+
+The application analyzes completed adoption records by matching each adoption record with its corresponding animal. It groups and counts the records according to species and breed, calculates shelter stay durations, and performs recursive aggregation through the classification tree.
+
+**Table 7. Data Mining and Aggregation Operations**
+
+| **Analysis** | **Aggregation Method** | **Purpose** |
+| --- | --- | --- |
+| Adoptions by Species | Counts completed adoptions for each species and sorts the results from highest to lowest frequency. | Identifies the species with the highest number of adoptions. |
+| Adoptions by Breed | Counts completed adoptions for each recorded breed and ranks them by frequency. | Identifies the most adopted breeds. |
+| Average Shelter Stay | Calculates the days between an animal's intake and adoption dates, then computes the overall and per-species averages. | Determines how long animals typically stay in the shelter before adoption. |
+| Adoptions by Classification | Uses recursive traversal to count adopted animals under each classification node, including all its descendant nodes. | Provides adoption totals across the animal classification hierarchy. |
+
+The analysis reads the live animal and adoption records from the SQLite database each time it runs. The analytics are refreshed after interest is recorded, an animal is adopted, or a CSV file is imported, and whenever Refresh Analytics is clicked, so the results and charts change whenever the underlying data changes.
+
+### 7.2 Recursive Classification Analysis
+
+PawTrack uses the ClassificationService and ClassificationNode classes to organize animal species and breeds into a hierarchical tree structure. The hierarchy allows classifications to have multiple levels without a fixed depth.
+
+For example:
+
+**Dog > Sporting Group > Retriever > Golden Retriever**
+
+The application uses recursive methods to search for classifications by name or full path, retrieve classification paths, and traverse the hierarchy. During analytics processing, the AnalyticsService uses recursive aggregation to calculate the total number of adopted animals within each classification, including its descendants. This allows staff to analyze adoption patterns at different levels of the classification hierarchy rather than relying only on individual species or breed names.
 
 
