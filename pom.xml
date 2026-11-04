@@ -5,23 +5,28 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>pawtrack</groupId>
-    <artifactId>pet-shelter-tracker</artifactId>
+    <artifactId>pawtrack</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
-    <name>Pet Shelter &amp; Adoption Tracker</name>
-    <description>OOD pet shelter tracker with SQLite/JDBC persistence, recursion, REST API, Swing GUI, analytics and charts.</description>
+    <name>PawTrack</name>
+    <description>PawTrack: a Pet Shelter &amp; Adoption Tracker with SQLite/JDBC persistence, recursion, REST API, Swing GUI, analytics and charts.</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.release>17</maven.compiler.release>
+
+        <!-- Entry point: the Main class must be in package pawtrack (pawtrack/Main.java) -->
+        <main.class>pawtrack.Main</main.class>
+
         <junit.version>5.11.4</junit.version>
         <sqlite.version>3.46.1.3</sqlite.version>
         <json.version>20240303</json.version>
         <exec.plugin.version>3.5.0</exec.plugin.version>
         <surefire.version>3.5.2</surefire.version>
         <compiler.plugin.version>3.13.0</compiler.plugin.version>
+        <shade.plugin.version>3.6.0</shade.plugin.version>
     </properties>
 
     <dependencies>
@@ -49,7 +54,7 @@
     </dependencies>
 
     <build>
-        <finalName>pet-shelter-tracker</finalName>
+        <finalName>pawtrack</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -63,21 +68,21 @@
                 <version>${surefire.version}</version>
             </plugin>
 
-            <!-- mvn exec:java  -> launches the Swing GUI -->
+            <!-- mvn exec:java -> launches the Swing GUI -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>${exec.plugin.version}</version>
                 <configuration>
-                    <mainClass>com.pawtrack.Main</mainClass>
+                    <mainClass>${main.class}</mainClass>
                 </configuration>
             </plugin>
 
-            <!-- Runnable fat jar: target/pet-shelter-tracker.jar -->
+            <!-- Runnable jar with all dependencies: target/pawtrack.jar -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.6.0</version>
+                <version>${shade.plugin.version}</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -88,7 +93,7 @@
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.pawtrack.Main</mainClass>
+                                    <mainClass>${main.class}</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

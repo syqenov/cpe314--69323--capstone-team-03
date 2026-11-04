@@ -15,4 +15,4 @@ public record CsvImportResult(int imported, int skipped, int adoptions, int newA
                 imported, adoptions, newAdopters, skipped, durationMillis / 1000.0);
     }
 }
-}
+

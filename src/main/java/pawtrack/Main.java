@@ -1,3 +1,4 @@
+package pawtrack;
 
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
@@ -29,3 +30,4 @@ public final class Main {
         });
     }
 }
+

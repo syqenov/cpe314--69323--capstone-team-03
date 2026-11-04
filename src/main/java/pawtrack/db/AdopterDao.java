@@ -1,6 +1,5 @@
 package pawtrack.db;
 
-
 import pawtrack.model.Adopter;
 
 import java.sql.Connection;

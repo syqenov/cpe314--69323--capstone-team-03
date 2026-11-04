@@ -23,4 +23,4 @@ public record CsvRow(
         return adoptionDate != null && adopterEmail != null && !adopterEmail.isBlank();
     }
 }
-}
+
