@@ -65,6 +65,7 @@
 | 0.3 | Nov. 2, 2026 | Aeisha Elizar | Add Error handling and json example |
 | 0.3 | Nov. 2, 2026 | Shann Michael Agang | Added Concurrency Design |
 | 0.3 | Nov. 3, 2026 | Sofia Yvonne Enovero | Add 7.1 table and 7.2 subsection |
+| 0.3 | Nov. 3, 2026 | Cleint Lausa | Add Data Visualization |
 <br>
 
 ## Introduction & Project Overview
@@ -370,5 +371,31 @@ For example:
 **Dog > Sporting Group > Retriever > Golden Retriever**
 
 The application uses recursive methods to search for classifications by name or full path, retrieve classification paths, and traverse the hierarchy. During analytics processing, the AnalyticsService uses recursive aggregation to calculate the total number of adopted animals within each classification, including its descendants. This allows staff to analyze adoption patterns at different levels of the classification hierarchy rather than relying only on individual species or breed names.
+
+### 7.2 Recursive Classification Analysis
+
+PawTrack uses the ClassificationService and ClassificationNode classes to organize animal species and breeds into a hierarchical tree structure. The hierarchy allows classifications to have multiple levels without a fixed depth.
+
+For example:
+
+**Dog > Sporting Group > Retriever > Golden Retriever**
+
+The application uses recursive methods to search for classifications by name or full path, retrieve classification paths, and traverse the hierarchy. During analytics processing, the AnalyticsService uses recursive aggregation to calculate the total number of adopted animals within each classification, including its descendants. This allows staff to analyze adoption patterns at different levels of the classification hierarchy rather than relying only on individual species or breed names.
+
+### 7.3 Data Visualization
+
+PawTrack uses a bar chart, drawn by the BarChartPanel class, to show the aggregated results. A bar chart compares numbers across categories such as species, breeds, and classifications. The AnalyticsPanel provides a metric dropdown and a**Refresh Analytics** button.
+
+**Table 8. Analytics Dashboard Visualizations**
+
+| **Chart** | **Data Displayed** | **Purpose** |
+| --- | --- | --- |
+| Adoptions by Species | Completed adoptions per species | Compare adoption frequency |
+| Top Adopted Breeds (Top 8) | The eight breeds with the most adoptions | Highlight the most adopted breeds |
+| Average Shelter Stay (days) by Species | Average shelter days per species | Compare stay length |
+| Adoptions by Classification (recursive) | Adoptions per classification, including descendants | Show adoption spread across the hierarchy |
+
+The dashboard also shows a text summary: total animals, completed adoptions, most adopted species and breed, average shelter stay, and adopters on waitlists. Together, these results help staff spot adoption patterns and monitor shelter stay durations.
+
 
 
