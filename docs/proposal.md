@@ -1,6 +1,24 @@
 ## cpe314--69323--capstone-team-03
 
-# CPE 314 Capstone Project Proposal — Pet Shelter &amp; Adoption Tracker
+# CPE 314 — Software Design & Software Design Laboratory
+
+## Week 8 — Project Proposal
+
+*Due end of Week 8 session | 10% of the Finals Term Grade | Scored out of 100*
+
+| Field | Details |
+|---------|---------|
+| **Group Name / No.** | **Group 3** |
+| **Members** | Shann Michael Aagno - UI Designer |
+|  | Sofia Yvonne Enovero - Team Lead / Developer |
+|  | Kyle Cheznie Taghoy - QA (Quality Assurance) |
+|  | Aeisha Mae Elizar - Database Admin |
+|  | Cleint Lausa - Developer |
+| **Repository URL** | `cpe314--69323--capstone-team-03` |
+| **Theme** | Pet Shelter & Adaptation Tracker |
+| **API You Will Use** | - https://dog.ceo/dog-api/documentation<br>- https://thecatapi.com |
+
+---
 
 ## 1. One paragraph Pitch 
 
