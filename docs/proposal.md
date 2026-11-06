@@ -47,7 +47,7 @@ system empowers shelter teams to make data-driven decisions and efficiently mana
 ## 4. Task Split 
 | Member | Primary Responsibility (this milestone) |
 | --- | --- |
-| Sofia Yvonne Enovero | Team Lead / Developer |
+| Sofia Yvonne Enovero | Team Lead |
 | Shann Michael Agang | UI Designer/Developer |
 | Cleint Lausa | Developer |
 | Kyle Cheznie Taghoy | QA (Quality Assurance) |
