@@ -4,8 +4,6 @@
 
 ## Week 8 — Project Proposal
 
-*Due end of Week 8 session | 10% of the Finals Term Grade | Scored out of 100*
-
 | Field | Details |
 |---------|---------|
 | **Group Name / No.** | **Group 3** |
@@ -87,9 +85,9 @@ system empowers shelter teams to make data-driven decisions and efficiently mana
 The following items require further clarification or may present implementation challenges:
 
 - How should the application handle situations when an external API becomes unavailable or experiences downtime?
-- Should the SQLite database file be stored within the project directory or in a separate location?
-- Do the JUnit 5 tests need to run successfully without a database connection or network access?
-- If a CSV file contains incorrect or missing data, how do we handle it during import?
-- Is there a required CSV format or row count, or can we define our own?
+- The Dog CEO API or TheCatAPI may become unavailable, experience downtime, or return unexpected responses. How will the application handle failed requests while ensuring users can still access previously retrieved animal information?
+-Imported CSV files may contain missing fields, invalid animal records, duplicate entries, or incorrectly formatted data. Should invalid rows be skipped with an error report, or should the entire import be rejected?
+- External APIs may impose request limits or respond slowly. Should the application implement request timeouts, retry mechanisms, and temporary caching to prevent performance issues?
+- Unexpected application shutdowns or interrupted database operations may result in incomplete data updates. How will the application ensure data consistency and provide database backup and recovery?
 - Our animal types include “Other”, which neither Dog CEO nor TheCatAPI covers. Is it acceptable for those animals to use a placeholder image? 
 
