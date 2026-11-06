@@ -206,7 +206,7 @@ class AdoptionRecordDaoTest {
             List<Object[]> results = dao.averageStayDaysBySpecies();
 
             assertEquals(1, results.size());
-            assertEquals("DOG", results.get(0)[0]);
+            assertEquals("Dog", results.get(0)[0]);
             assertEquals(31.0, (Double) results.get(0)[1], 0.001);
         }
     }
