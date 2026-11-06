@@ -26,4 +26,7 @@ replay_pid*
 
 .classpath
 .project
-.settings/S
+.settings/
+
+# SQLite database (generated on first run)
+*.db
