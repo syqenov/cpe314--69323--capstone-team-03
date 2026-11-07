@@ -12,7 +12,7 @@
 |  | *Cleint Lausa - Developer* | 
 | **Instructor:** | Richyll Son | 
 | **Term:** | First Semester, S.Y. 2026-2027 | 
-| **Document Version / Date:** | *V 0.2 - 10/27/2026* | 
+| **Document Version / Date:** | *V 0.3 - 11/07/2026* | 
 
 <br>
 
@@ -22,18 +22,20 @@
   - Table of Contents ............................................................................................................................... 2
   - Revision History .................................................................................................................................. 3
   - 1. Introduction & Project Overview ........................................................................................ 3
-  - 2. Preliminary ER Sketch & Team Role ................................................................................... 4
-    - Table 1: Preliminary entities and key attributes ....................................................... 5
-    - Table 2: Preliminary relationships and cardinality ................................................... 5
-    - Table 3: Team members and primary roles ................................................................ 5
+  - 2. Preliminary ER Sketch & Team Roles ................................................................................. 4
+    - Table 1: Preliminary Entities and Key Attributes ....................................................... 5
+    - Table 2: Preliminary Relationships and Cardinality ................................................... 5
+    - Table 3: Team Members and Primary Roles ................................................................ 5
   - 3. System Architecture & Object-Oriented Design ........................................................... 6
-    - Class Hierarchy - PawTrack: Pet Shelter & Adoption Tracker ............................. 6
-    - Single Responsibility Principle Justification Table .................................................. 6
-    - Design Rationale: PawTrack ............................................................................................ 8
+    - 3.1 Class Hierarchy - PawTrack: Pet Shelter & Adoption Tracker ............................. 6
+    - 3.2 Single Responsibility Principle Justification Table ................................................ 6
+    - 3.3 Design Rationale: PawTrack ............................................................................................ 8
   - 4. Data Model & Database Design ......................................................................................... 9
-    - ER Diagram ........................................................................................................................... 9
-    - SQLite schema ..................................................................................................................... 9
-   <br>
+    - 4.1 ER Diagram ........................................................................................................................... 9
+    - 4.2 SQLite Schema ..................................................................................................................... 9
+
+<br>
+
 ## Revision History
 
 | Version | Date | Author | Changes |
@@ -51,20 +53,20 @@
 
 <br>
 
-## Introduction & Project Overview
+## 1. Introduction & Project Overview
 
-  The Pet Shelter & Adoption Tracker is a Java desktop application designed to help animal shelter staff manage intake, waitlists, and adoptions in one offline-first tool. Many small shelters rely on scattered spreadsheets and paper records, making it difficult to track animal stays and adoption demand. Our application centralizes these operations: it models species with distinct care schedules, manages adoption waitlists using queues, enables status undo operations via a stack, and supports bulk historical CSV log imports. Integrated pet APIs (Dog CEO API and TheCatAPI) auto-fill sample images and breed details, while built-in analytics render adoption trends and stay durations as visual bar charts to assist staff in operational planning. 
+  The Pet Shelter & Adoption Tracker is a Java desktop application designed to help animal shelter staff manage intake, waitlists, and adoptions in one offline-first tool. Many small shelters rely on scattered spreadsheets and paper records, making it difficult to track animal stays and adoption demand. Our application centralizes these operations: it models species with distinct care schedules, manages adoption waitlists using queues, and enables status undo operations via a stack. Integrated pet APIs (Dog CEO API and TheCatAPI) provide sample pet images. Bulk historical CSV log imports and built-in analytics that render adoption trends and stay durations as bar charts are planned for Milestone 2.
 
 <br>
 
-## Preliminary ER Sketch & Team Roles
+## 2. Preliminary ER Sketch & Team Roles
 
 ### Table 1: Preliminary Entities and Key Attributes
 
 | Entity | Key Attributes |
 |---|---|
 | Classification | id (PK), name, parent_id (FK → Classification.id) |
-| Animal | id (PK), name, species, breed, age_months, intake_date, status, image_url, classification_id (FK → Classification.id) |
+| Animal | id (PK), name, species, breed, age_months, intake_date, status, classification_id (FK → Classification.id) |
 | Adopter | id (PK), name, email (unique), phone |
 | AdoptionRecord | id (PK), animal_id (FK → Animal.id), adopter_id (FK → Adopter.id), adoption_date, fee_paid |
 | WaitlistEntry | id (PK), animal_id (FK → Animal.id), adopter_id (FK → Adopter.id), requested_at, position |
@@ -78,8 +80,9 @@
 | Animal | 1:M | AdoptionRecord | animal_id | An animal can have adoption records |
 | Adopter | 1:M | AdoptionRecord | adopter_id | An adopter can adopt multiple animals |
 | Animal | 1:M | WaitlistEntry | animal_id | An animal can have many adopters waiting |
+| Adopter | 1:M | WaitlistEntry | adopter_id | An adopter can wait on multiple animals |
 
-### Table 3: Team members and primary roles
+### Table 3: Team Members and Primary Roles
 
 | Member | Primary Responsibility (this milestone) |
 | --- | --- |
@@ -93,15 +96,17 @@
 
 ## 3. System Architecture & Object-Oriented Design
  
-### Class Hierarchy - PawTrack: Pet Shelter & Adoption Tracker
+### 3.1 Class Hierarchy - PawTrack: Pet Shelter & Adoption Tracker
  
 ![Class hierarchy diagram](./class-hierarchy.png)
 
+*Figure 3.1 Class hierarchy of PawTrack: the abstract Animal class with its Dog and Cat subclasses, the Species and AnimalStatus enumerations, and the PetImageService interface with its two API implementations.*
+
 <br>
 
-### Single Responsibility Principle Justification Table
+### 3.2 Single Responsibility Principle Justification Table
  
-**Class hierarchy (animals)**
+**Table 3.1: Class hierarchy (animals)**
  
 | Class | Single responsibility | Why it follows SRP |
 |---|---|---|
@@ -111,7 +116,7 @@
 | **Species (enum)** | Defines the supported species (DOG, CAT) and their display label. | It changes only when a species is added. |
 | **AnimalStatus (enum)** | Defines the animal's status values (INTAKE, AVAILABLE, PENDING, ADOPTED, RETURNED) and converts them to and from labels. | It changes only when the status lifecycle changes. |
  
-**Image API classes**
+**Table 3.2: Image API classes**
  
 | Class | Single responsibility | Why it follows SRP |
 |---|---|---|
@@ -122,7 +127,7 @@
 | **PetImageResult** | Holds one fetched image result (URL, species, breed, provider). | It is data only, with no behavior. |
 | **HttpJson** | Performs the HTTP GET request and returns the JSON text. | Network code is in one place, not repeated in each service. |
  
-**Services and data structures**
+**Table 3.3: Services and data structures**
  
 | Class | Single responsibility | Why it follows SRP |
 |---|---|---|
@@ -133,15 +138,15 @@
 | **ClassificationNode** | Represents one node in the classification tree and walks its children recursively. | It models one tree node and nothing else. |
 | **ShelterSeeder** | Fills an empty database with sample animals. | Demo data is kept out of the other classes. |
 
-**Database layer**
+**Table 3.4: Database layer**
  
 | Class | Single responsibility | Why it follows SRP |
 |---|---|---|
 | **Database** | Opens the SQLite connection, enables foreign keys, and creates the tables. | Connection and schema setup in one place. |
-| **AnimalDao, AdopterDao, AdoptionRecordDao, ClassificationDao, WaitlistDao** | Each runs the SQL (PreparedStatement) for one table. | One class per table, so a change to one table doesn't touch the others. |
+| **AnimalDao, AdopterDao, AdoptionRecordDao, ClassificationDao, WaitlistDao** | Each runs the SQL for one table, using PreparedStatement for every query that takes input. | One class per table, so a change to one table doesn't touch the others. |
 | **Adopter, AdoptionRecord** | Hold adopter and adoption data. | Data only. |
  
-**GUI layer**
+**Table 3.5: GUI layer**
  
 | Class | Single responsibility | Why it follows SRP |
 |---|---|---|
@@ -151,17 +156,17 @@
 
 <br>
 
-### Design Rationale: PawTrack
+### 3.3 Design Rationale: PawTrack
  
 The system is built around an abstract Animal class that stores the data every animal shares (id, name, breed, age in months, intake date, status, and classification) and validates it. It declares the behavior that differs by species: species(), adoptionFee(), careSchedule(), and isSenior(). Dog and Cat extend Animal and implement only their own rules: the fee for juvenile, standard, and senior animals, the senior age threshold, and the care schedule. The rest of the application works with Animal references and calls these methods without checking the species, so the same code serves both. A static Animal.create() factory builds the right subclass from a Species, and two enums, Species and AnimalStatus, keep the allowed species and status values in one place.
  
-This follows the Single Responsibility Principle. Animal models shared animal data and the contract, and each subclass owns the rules for one species. None of them contains database, GUI, or API code. Those concerns are in separate classes: DAO classes, one per table, run the SQL with PreparedStatement. Services hold the data-structure logic: WaitlistService keeps a first-in, first-out queue of interested adopters, StatusHistoryService keeps the undo stack, and ClassificationService searches the classification tree recursively. Pet images are fetched through the PetImageService interface, with DogCeoImageService and CatApiImageService each responsible for one external API and its JSON, and PetImageServiceFactory choosing the right one. The GUI depends only on the interface, so an API can be changed, replaced, or fail without touching the animal classes, and ImageWorker keeps downloads off the Swing event thread so the window stays responsive.
+This follows the Single Responsibility Principle. Animal models shared animal data and the contract, and each subclass owns the rules for one species. None of them contains database, GUI, or API code. Those concerns are in separate classes: DAO classes, one per table, run the SQL for their table and use PreparedStatement for every query that takes input. Services hold the data-structure logic: WaitlistService keeps a first-in, first-out queue of interested adopters, StatusHistoryService keeps the undo stack, and ClassificationService searches the classification tree recursively. Pet images are fetched through the PetImageService interface, with DogCeoImageService and CatApiImageService each responsible for one external API and its JSON, and PetImageServiceFactory choosing the right one. The GUI depends only on the interface, so an API can be changed, replaced, or fail without touching the animal classes, and ImageWorker keeps downloads off the Swing event thread so the window stays responsive.
 
 <br>
 
 ## 4. Data Model & Database Design
 
-### ER Diagram
+### 4.1 ER Diagram
  
 ![Finalized ERD](./er-diagram.png)
  
@@ -169,13 +174,21 @@ This follows the Single Responsibility Principle. Animal models shared animal da
 
 This section supersedes the preliminary ER sketch in Section 2.
 
+Notes on the diagram:
+
+- `parent_id` in `classification` and `classification_id` in `animal` may be empty (NULL): a top-level classification has no parent, and an animal may have no classification.
+- `waitlist_entry` has a unique pair (`animal_id`, `adopter_id`), so an adopter can join the waitlist of an animal only once.
+- The foreign keys in `adoption_record` and `waitlist_entry`, and `parent_id` in `classification`, use `ON DELETE CASCADE`.
+
 <br>
 
-### SQLite schema
--- Database file: pawtrack.db (created automatically by Database.java on first run)
+### 4.2 SQLite Schema
 
--- The app runs PRAGMA foreign_keys = ON on every connection.
+The database file is `pawtrack.db`. It is created automatically by `Database.java` on first run, and the app runs `PRAGMA foreign_keys = ON` on every connection.
 
+*Listing 4.1 SQLite schema (CREATE TABLE statements)*
+
+```sql
 CREATE TABLE IF NOT EXISTS classification (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -216,4 +229,4 @@ CREATE TABLE IF NOT EXISTS waitlist_entry (
   position INTEGER NOT NULL,
   UNIQUE(animal_id, adopter_id)
 );
-
+```
