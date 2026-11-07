@@ -82,8 +82,7 @@ system empowers shelter teams to make data-driven decisions and efficiently mana
 ---
 
 ## 6. Risks / Open Questions
-- How should the application handle situations when an external API becomes unavailable or experiences downtime?
-- TheCatAPI requires a free API key and limits requests when no key is used. Should the key be read from an environment variable, and should images be fetched only when staff click the button instead of for every animal in the list?
+- The Stack lets staff undo the last status change, but a status change can also create an AdoptionRecord row in SQLite. When staff undo “Adopted” back to “Available”, should the undo also delete that AdoptionRecord and restore the waitlist entry, or should the record stay and be marked as reversed so the shelter’s history is preserved? 
 - Breed names returned by the APIs (for example retriever/golden) may not match the nodes of our classification tree. Should an unmatched breed fall back to the Dog or Cat root node so that every animal still receives a classification?
 - The adoption waitlist is a Queue held in memory, but waitlist entries are also stored in the waitlist_entry table. Should the queue be rebuilt from that table when the application restarts so that no adopter loses their place in line?
 - Our animal types include “Other”, which neither Dog CEO nor TheCatAPI covers. Is it acceptable for those animals to use a placeholder image?
