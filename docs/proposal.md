@@ -82,12 +82,10 @@ system empowers shelter teams to make data-driven decisions and efficiently mana
 ---
 
 ## 6. Risks / Open Questions
-The following items require further clarification or may present implementation challenges:
-
 - How should the application handle situations when an external API becomes unavailable or experiences downtime?
-- The Dog CEO API or TheCatAPI may become unavailable, experience downtime, or return unexpected responses. How will the application handle failed requests while ensuring users can still access previously retrieved animal information?
--Imported CSV files may contain missing fields, invalid animal records, duplicate entries, or incorrectly formatted data. Should invalid rows be skipped with an error report, or should the entire import be rejected?
-- External APIs may impose request limits or respond slowly. Should the application implement request timeouts, retry mechanisms, and temporary caching to prevent performance issues?
-- Unexpected application shutdowns or interrupted database operations may result in incomplete data updates. How will the application ensure data consistency and provide database backup and recovery?
-- Our animal types include “Other”, which neither Dog CEO nor TheCatAPI covers. Is it acceptable for those animals to use a placeholder image? 
+- TheCatAPI requires a free API key and limits requests when no key is used. Should the key be read from an environment variable, and should images be fetched only when staff click the button instead of for every animal in the list?
+- Breed names returned by the APIs (for example retriever/golden) may not match the nodes of our classification tree. Should an unmatched breed fall back to the Dog or Cat root node so that every animal still receives a classification?
+- The adoption waitlist is a Queue held in memory, but waitlist entries are also stored in the waitlist_entry table. Should the queue be rebuilt from that table when the application restarts so that no adopter loses their place in line?
+- Our animal types include “Other”, which neither Dog CEO nor TheCatAPI covers. Is it acceptable for those animals to use a placeholder image?
+
 
