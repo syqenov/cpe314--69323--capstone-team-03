@@ -1,10 +1,18 @@
 package pawtrack;
 
+import pawtrack.gui.LoginPanel;
+import pawtrack.gui.MainFrame;
+import pawtrack.security.Credentials.Role;
+
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
-import pawtrack.gui.MainFrame;
 
+/**
+ * Application entry point. Shows the login panel first, then launches the
+ * Swing GUI with role-based access on the Event Dispatch Thread.
+ */
 public final class Main {
 
     private Main() {
@@ -16,9 +24,23 @@ public final class Main {
         } catch (Exception ignored) {
             // fall back to the cross-platform look and feel
         }
-        SwingUtilities.invokeLater(() -> {
+        SwingUtilities.invokeLater(Main::showLogin);
+    }
+
+    private static void showLogin() {
+        JFrame loginFrame = new JFrame("Pet Shelter - Login");
+        loginFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        loginFrame.setSize(420, 320);
+        loginFrame.setLocationRelativeTo(null);
+
+        LoginPanel loginPanel = new LoginPanel(role -> {
+            loginFrame.dispose();
             try {
-                MainFrame frame = new MainFrame();
+                MainFrame frame = new MainFrame(role);
+                frame.setOnLogout(() -> {
+                    frame.dispose();
+                    showLogin();
+                });
                 frame.setVisible(true);
             } catch (Exception failure) {
                 failure.printStackTrace();
@@ -28,6 +50,8 @@ public final class Main {
                 System.exit(1);
             }
         });
+
+        loginFrame.add(loginPanel);
+        loginFrame.setVisible(true);
     }
 }
-
