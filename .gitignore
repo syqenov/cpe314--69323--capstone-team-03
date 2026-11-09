@@ -30,3 +30,4 @@ replay_pid*
 
 # SQLite database (generated on first run)
 *.db
+/bin/
