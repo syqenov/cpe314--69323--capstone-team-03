@@ -22,6 +22,9 @@ import pawtrack.service.ShelterSeeder;
 import pawtrack.service.StatusHistoryService;
 import pawtrack.service.WaitlistService;
 
+import pawtrack.security.Credentials;
+import pawtrack.security.Credentials.Role;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -41,8 +44,12 @@ import javax.swing.JTextField;
 import javax.swing.SwingWorker;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.GridLayout;
 import java.io.File;
 import java.nio.file.Files;
@@ -59,13 +66,13 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Main application window. Wires the domain services to interactive Swing
- * controls and runs long-running work (CSV import, API/image downloads) on
- * background threads.
+ * Main application window (GUI). Connects to Main (entry point), Database, DAOs,
+ * services, and workers. Contains toolbar, animal table, analytics, activity log.
  */
 public final class MainFrame extends JFrame {
 
     private static final String ALL_CLASSIFICATIONS = "<All animals>";
+    // Private helper for MainFrame GUI logic
     private static final Dimension IMAGE_SIZE = new Dimension(360, 360);
 
     private final Database database;
@@ -76,22 +83,41 @@ public final class MainFrame extends JFrame {
     private final WaitlistDao waitlistDao;
 
     private ClassificationService classification;
+    // Private helper for MainFrame GUI logic
     private final WaitlistService waitlist = new WaitlistService();
+    // Private helper for MainFrame GUI logic
     private final StatusHistoryService history = new StatusHistoryService();
+    // Private helper for MainFrame GUI logic
     private final AnalyticsService analytics = new AnalyticsService();
 
+    // Private helper for MainFrame GUI logic
     private final AnimalTableModel tableModel = new AnimalTableModel(waitlist);
+    // Private helper for MainFrame GUI logic
     private final JTable animalTable = new JTable(tableModel);
+    // Private helper for MainFrame GUI logic
     private final JTextArea logArea = new JTextArea();
+    private JTabbedPane tabs;
+    private JPanel toolbar;
+    private JPanel imagePanel;
+    private boolean toolbarMinimized = false;
+    private final Role role;
+    private Runnable onLogout;
+    // Private helper for MainFrame GUI logic
     private final JProgressBar progressBar = new JProgressBar(0, 100);
+    // Private helper for MainFrame GUI logic
     private final JLabel statusLabel = new JLabel("Ready");
+    // Private helper for MainFrame GUI logic
     private final JComboBox<String> classificationFilter = new JComboBox<>();
+    // Private helper for MainFrame GUI logic
     private final JLabel imageLabel = new JLabel();
+    // Private helper for MainFrame GUI logic
     private final JLabel imageInfoLabel = new JLabel(" ");
+    // Private helper for MainFrame GUI logic
     private final AnalyticsPanel analyticsPanel = new AnalyticsPanel();
 
-    public MainFrame() throws SQLException {
+    public MainFrame(Role role) throws SQLException {
         super("Pet Shelter & Adoption Tracker");
+        this.role = role;
         String dbPath = System.getProperty("petshelter.db", "petshelter.db");
         this.database = Database.openFile(dbPath);
         this.animalDao = new AnimalDao(database);
@@ -114,19 +140,30 @@ public final class MainFrame extends JFrame {
                 classification.nodeCount(), classification.depth()));
     }
 
+    /** Sets the callback to run when the user logs out. */
+    public void setOnLogout(Runnable onLogout) {
+        this.onLogout = onLogout;
+    }
+
     // ------------------------------------------------------------------ UI
 
+    // Private helper for MainFrame GUI logic
     private void buildUi() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout(6, 6));
         setMinimumSize(new Dimension(900, 600));
 
-        add(buildToolbar(), BorderLayout.NORTH);
+        add(buildToolbar(), BorderLayout.WEST);
 
-        JTabbedPane tabs = new JTabbedPane();
+        tabs = new JTabbedPane();
         tabs.addTab("Animals", buildAnimalTab());
-        tabs.addTab("Shelter Analytics", analyticsPanel);
-        tabs.addTab("Activity Log", new JScrollPane(logArea));
+        if (role == Role.ADMIN) {
+            tabs.addTab("Shelter Analytics", analyticsPanel);
+        }
+        if (role == Role.ADMIN) {
+            JScrollPane activityScroll = new JScrollPane(logArea);
+            tabs.addTab("Activity Log", activityScroll);
+        }
         add(tabs, BorderLayout.CENTER);
 
         add(buildImagePanel(), BorderLayout.EAST);
@@ -163,18 +200,79 @@ public final class MainFrame extends JFrame {
         setLocationRelativeTo(null);
     }
 
+    // Private helper for MainFrame GUI logic
     private JPanel buildToolbar() {
-        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 6));
+        toolbar = new JPanel();
+        toolbar.setLayout(new BoxLayout(toolbar, BoxLayout.Y_AXIS));
+        toolbar.setAlignmentX(Component.CENTER_ALIGNMENT);
         toolbar.setBorder(BorderFactory.createTitledBorder("Controls"));
 
+        JButton toggle = new JButton("◄");
+        toggle.setFocusPainted(false);
+        toggle.setPreferredSize(new Dimension(30, 30));
+        toggle.setMinimumSize(new Dimension(30, 30));
+        toggle.setMaximumSize(new Dimension(30, 30));
+        toggle.setBorder(new RoundedBorder(15, new Color(0xCCCCCC), 1));
+        toggle.setAlignmentX(Component.RIGHT_ALIGNMENT);
+        toggle.addActionListener(event -> {
+            toolbarMinimized = !toolbarMinimized;
+            toggle.setText(toolbarMinimized ? "►" : "◄");
+            applyToolbarMinimize();
+        });
+        toolbar.add(toggle);
+        toolbar.add(Box.createVerticalStrut(8));
+
+        JButton logoutButton = new JButton("Logout");
+        logoutButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        logoutButton.setPreferredSize(new Dimension(240, 40));
+        logoutButton.setMinimumSize(new Dimension(240, 40));
+        logoutButton.setMaximumSize(new Dimension(240, 40));
+        logoutButton.setBorder(new RoundedBorder(25, new Color(0xCCCCCC), 1));
+        logoutButton.setBackground(new Color(0x8A2B2B));
+        logoutButton.setForeground(Color.BLACK);
+        logoutButton.setFocusPainted(false);
+        logoutButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        logoutButton.addActionListener(event -> {
+            if (onLogout != null) {
+                onLogout.run();
+            }
+        });
+        toolbar.add(logoutButton);
+        toolbar.add(Box.createVerticalStrut(16));
+
         toolbar.add(button("List / Refresh Animals", this::onRefreshAnimals));
+        toolbar.add(Box.createVerticalStrut(16));
         toolbar.add(button("Filter by Classification", this::onFilterByClassification));
-        toolbar.add(button("Import Intake History (CSV)", this::onImportCsv));
+        toolbar.add(Box.createVerticalStrut(16));
+        if (role == Role.ADMIN) {
+            toolbar.add(button("Import Intake History (CSV)", this::onImportCsv));
+            toolbar.add(Box.createVerticalStrut(16));
+        }
         toolbar.add(button("Record Interest", this::onRecordInterest));
-        toolbar.add(button("Mark Adopted", this::onMarkAdopted));
-        toolbar.add(button("Undo Last Status Change", this::onUndo));
+        toolbar.add(Box.createVerticalStrut(16));
+        if (role == Role.ADMIN) {
+            toolbar.add(button("Mark Adopted", this::onMarkAdopted));
+            toolbar.add(Box.createVerticalStrut(16));
+            toolbar.add(button("Undo Last Status Change", this::onUndo));
+            toolbar.add(Box.createVerticalStrut(16));
+        }
         toolbar.add(button("Fetch Sample Pet Image", this::onFetchImage));
+        toolbar.add(Box.createVerticalStrut(16));
         classificationFilter.setPrototypeDisplayValue("Dog > Sporting Group > Retriever");
+        classificationFilter.setAlignmentX(Component.CENTER_ALIGNMENT);
+        classificationFilter.setPreferredSize(new Dimension(240, 40));
+        classificationFilter.setMinimumSize(new Dimension(240, 40));
+        classificationFilter.setMaximumSize(new Dimension(240, 40));
+        classificationFilter.setBorder(new RoundedBorder(25, new Color(0xCCCCCC), 1));
+        classificationFilter.setRenderer(new javax.swing.DefaultListCellRenderer() {
+            public java.awt.Component getListCellRendererComponent(javax.swing.JList<?> list, Object value, int index,
+                    boolean isSelected, boolean cellHasFocus) {
+                javax.swing.JLabel c = (javax.swing.JLabel) super.getListCellRendererComponent(list, value, index,
+                        isSelected, cellHasFocus);
+                c.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+                return c;
+            }
+        });
         classificationFilter.addActionListener(event -> {
             if (classificationFilter.getSelectedIndex() == 0) {
                 refreshAnimals();
@@ -184,16 +282,93 @@ public final class MainFrame extends JFrame {
             }
         });
         toolbar.add(classificationFilter);
+        progressBar.setAlignmentX(Component.CENTER_ALIGNMENT);
         toolbar.add(progressBar);
-        // Wrap toolbar in a scroll pane to avoid components stacking awkwardly when width is small
-        JScrollPane toolbarScroll = new JScrollPane(toolbar, JScrollPane.VERTICAL_SCROLLBAR_NEVER,
-                JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        toolbarScroll.setBorder(null);
-        JPanel wrapper = new JPanel(new BorderLayout());
-        wrapper.add(toolbarScroll, BorderLayout.CENTER);
-        return wrapper;
+        return toolbar;
     }
 
+    // Private helper for MainFrame GUI logic
+    private void applyToolbarMinimize() {
+        int fullW = 240;
+        int miniW = (int) (fullW * 0.20);
+        Component[] comps = toolbar.getComponents();
+        for (Component c : comps) {
+            if (c instanceof JButton && !((JButton) c).getText().equals("◄") && !((JButton) c).getText().equals("►")) {
+                JButton b = (JButton) c;
+                if (toolbarMinimized) {
+                    b.setText(shorten(b.getText()));
+                    b.setPreferredSize(new Dimension(miniW, 30));
+                    b.setMinimumSize(new Dimension(miniW, 30));
+                    b.setMaximumSize(new Dimension(miniW, 30));
+                } else {
+                    b.setText(restoreText(b.getText()));
+                    b.setPreferredSize(new Dimension(fullW, 40));
+                    b.setMinimumSize(new Dimension(fullW, 40));
+                    b.setMaximumSize(new Dimension(fullW, 40));
+                }
+                b.revalidate();
+            } else if (c instanceof JComboBox) {
+                JComboBox<?> cb = (JComboBox<?>) c;
+                if (toolbarMinimized) {
+                    cb.setPreferredSize(new Dimension(miniW, 30));
+                    cb.setMinimumSize(new Dimension(miniW, 30));
+                    cb.setMaximumSize(new Dimension(miniW, 30));
+                } else {
+                    cb.setPreferredSize(new Dimension(fullW, 40));
+                    cb.setMinimumSize(new Dimension(fullW, 40));
+                    cb.setMaximumSize(new Dimension(fullW, 40));
+                }
+                cb.revalidate();
+            } else if (c instanceof JButton) {
+                JButton tb = (JButton) c;
+                if (tb.getText().equals("◄") || tb.getText().equals("►")) {
+                    tb.setAlignmentX(toolbarMinimized ? Component.CENTER_ALIGNMENT : Component.RIGHT_ALIGNMENT);
+                    tb.revalidate();
+                }
+            } else if (c instanceof JProgressBar) {
+                JProgressBar pb = (JProgressBar) c;
+                if (toolbarMinimized) {
+                    pb.setPreferredSize(new Dimension(miniW, 20));
+                    pb.setMinimumSize(new Dimension(miniW, 20));
+                    pb.setMaximumSize(new Dimension(miniW, 20));
+                } else {
+                    pb.setPreferredSize(new Dimension(160, 22));
+                    pb.setMinimumSize(new Dimension(120, 22));
+                    pb.setMaximumSize(new Dimension(160, 22));
+                }
+                pb.revalidate();
+            }
+        }
+        toolbar.revalidate();
+        toolbar.repaint();
+    }
+
+    private String shorten(String text) {
+        if (text == null) return text;
+        if (text.startsWith("List")) return "List...";
+        if (text.startsWith("Filter")) return "Filter...";
+        if (text.startsWith("Import")) return "Import...";
+        if (text.startsWith("Record")) return "Record...";
+        if (text.startsWith("Mark")) return "Mark...";
+        if (text.startsWith("Undo")) return "Undo...";
+        if (text.startsWith("Fetch")) return "Fetch...";
+        if (text.contains("All")) return "<all...";
+        return text.length() > 6 ? text.substring(0, 6) + "..." : text;
+    }
+
+    private String restoreText(String text) {
+        if (text.equals("List...")) return "List / Refresh Animals";
+        if (text.equals("Filter...")) return "Filter by Classification";
+        if (text.equals("Import...")) return "Import Intake History (CSV)";
+        if (text.equals("Record...")) return "Record Interest";
+        if (text.equals("Mark...")) return "Mark Adopted";
+        if (text.equals("Undo...")) return "Undo Last Status Change";
+        if (text.equals("Fetch...")) return "Fetch Sample Pet Image";
+        if (text.equals("<all...")) return "<All animals>";
+        return text;
+    }
+
+    // Private helper for MainFrame GUI logic
     private JPanel buildAnimalTab() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
@@ -201,10 +376,11 @@ public final class MainFrame extends JFrame {
         return panel;
     }
 
+    // Private helper for MainFrame GUI logic
     private JPanel buildImagePanel() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createTitledBorder("Sample Pet Image (live API)"));
+        imagePanel = new JPanel();
+        imagePanel.setLayout(new BoxLayout(imagePanel, BoxLayout.Y_AXIS));
+        imagePanel.setBorder(BorderFactory.createTitledBorder("Sample Pet Image (live API)"));
         imageLabel.setPreferredSize(IMAGE_SIZE);
         imageLabel.setMinimumSize(new Dimension(200, 200));
         imageLabel.setMaximumSize(new Dimension(400, 400));
@@ -212,27 +388,77 @@ public final class MainFrame extends JFrame {
         imageLabel.setAlignmentX(CENTER_ALIGNMENT);
         imageLabel.setBorder(BorderFactory.createLineBorder(new java.awt.Color(0xCCCCCC)));
         imageInfoLabel.setAlignmentX(CENTER_ALIGNMENT);
-        panel.add(Box.createVerticalStrut(6));
-        panel.add(imageLabel);
-        panel.add(Box.createVerticalStrut(6));
-        panel.add(imageInfoLabel);
-        return panel;
+        imagePanel.add(Box.createVerticalStrut(6));
+        imagePanel.add(imageLabel);
+        imagePanel.add(Box.createVerticalStrut(6));
+        imagePanel.add(imageInfoLabel);
+        return imagePanel;
     }
 
+    // Private helper for MainFrame GUI logic
     private JButton button(String text, Runnable action) {
         JButton button = new JButton(text);
+        button.setAlignmentX(Component.CENTER_ALIGNMENT);
+        button.setPreferredSize(new Dimension(240, 40));
+        button.setMinimumSize(new Dimension(240, 40));
+        button.setMaximumSize(new Dimension(240, 40));
+        button.setBorder(new RoundedBorder(25, new Color(0xCCCCCC), 1));
+        button.setBackground(new Color(0x2B5B8A));
+        button.setForeground(Color.BLACK);
+        button.setFocusPainted(false);
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        Color normal = new Color(0x2B5B8A);
+        Color hover = new Color(0x1F4366);
+        Color pressed = new Color(0x142D4A);
+        button.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) { button.setBackground(hover); }
+            public void mouseExited(MouseEvent e) { button.setBackground(normal); }
+            public void mousePressed(MouseEvent e) { button.setBackground(pressed); }
+            public void mouseReleased(MouseEvent e) { button.setBackground(button.contains(e.getPoint()) ? hover : normal); }
+        });
         button.addActionListener(event -> action.run());
         return button;
     }
 
+    /** Simple rounded-rectangle border for Swing buttons. */
+    private static final class RoundedBorder implements javax.swing.border.Border {
+        private final int radius;
+        private final Color color;
+        private final int thickness;
+
+        RoundedBorder(int radius, Color color, int thickness) {
+            this.radius = radius;
+            this.color = color;
+            this.thickness = thickness;
+        }
+
+        public java.awt.Insets getBorderInsets(java.awt.Component c) {
+            return new java.awt.Insets(thickness, thickness, thickness, thickness);
+        }
+
+        public boolean isBorderOpaque() {
+            return false;
+        }
+
+        public void paintBorder(java.awt.Component c, java.awt.Graphics g, int x, int y, int w, int h) {
+            java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
+            g2.setColor(color);
+            g2.setStroke(new java.awt.BasicStroke(thickness));
+            g2.drawRoundRect(x, y, w - 1, h - 1, radius, radius);
+            g2.dispose();
+        }
+    }
+
     // ------------------------------------------------------------- actions
 
+    // Private helper for MainFrame GUI logic
     private void onRefreshAnimals() {
         classificationFilter.setSelectedIndex(0);
         refreshAnimals();
         statusLabel.setText("Loaded " + tableModel.getRowCount() + " animal(s)");
     }
 
+    // Private helper for MainFrame GUI logic
     private void onFilterByClassification() {
         Object selected = classificationFilter.getSelectedItem();
         if (selected == null || ALL_CLASSIFICATIONS.equals(selected)) {
@@ -265,6 +491,7 @@ public final class MainFrame extends JFrame {
         }
     }
 
+    // Private helper for MainFrame GUI logic
     private void onImportCsv() {
         JFileChooser chooser = new JFileChooser(new File("data"));
         chooser.setDialogTitle("Select historical intake/adoption CSV");
@@ -305,6 +532,7 @@ public final class MainFrame extends JFrame {
         worker.execute();
     }
 
+    // Private helper for MainFrame GUI logic
     private void onRecordInterest() {
         Animal animal = selectedAnimal();
         if (animal == null) {
@@ -339,6 +567,7 @@ public final class MainFrame extends JFrame {
         }
     }
 
+    // Private helper for MainFrame GUI logic
     private void onMarkAdopted() {
         Animal animal = selectedAnimal();
         if (animal == null) {
@@ -380,6 +609,7 @@ public final class MainFrame extends JFrame {
         }
     }
 
+    // Private helper for MainFrame GUI logic
     private void onUndo() {
         Optional<StatusChange> undone = history.undo();
         if (undone.isEmpty()) {
@@ -397,6 +627,7 @@ public final class MainFrame extends JFrame {
         }
     }
 
+    // Private helper for MainFrame GUI logic
     private void onFetchImage() {
         Animal animal = selectedAnimal();
         if (animal == null) {
@@ -437,6 +668,7 @@ public final class MainFrame extends JFrame {
 
     // ------------------------------------------------------------- helpers
 
+    // Private helper for MainFrame GUI logic
     private Animal selectedAnimal() {
         int viewRow = animalTable.getSelectedRow();
         if (viewRow < 0) {
@@ -445,6 +677,7 @@ public final class MainFrame extends JFrame {
         return tableModel.getAnimalAt(animalTable.convertRowIndexToModel(viewRow));
     }
 
+    // Private helper for MainFrame GUI logic
     private Adopter promptForAdopter(String title) {
         JTextField nameField = new JTextField(18);
         JTextField emailField = new JTextField(18);
@@ -470,6 +703,7 @@ public final class MainFrame extends JFrame {
         }
     }
 
+    // Private helper for MainFrame GUI logic
     private void refreshAnimals() {
         try {
             tableModel.setAnimals(animalDao.findAll());
@@ -478,6 +712,7 @@ public final class MainFrame extends JFrame {
         }
     }
 
+    // Private helper for MainFrame GUI logic
     private void refreshAnalytics() {
         try {
             List<Animal> animals = animalDao.findAll();
@@ -491,6 +726,7 @@ public final class MainFrame extends JFrame {
         }
     }
 
+    // Private helper for MainFrame GUI logic
     private void populateClassificationFilter() {
         classificationFilter.addItem(ALL_CLASSIFICATIONS);
         for (String path : classification.allPaths()) {
@@ -498,6 +734,7 @@ public final class MainFrame extends JFrame {
         }
     }
 
+    // Private helper for MainFrame GUI logic
     private void loadWaitlists() {
         try {
             for (WaitlistDao.Entry entry : waitlistDao.loadAll()) {
@@ -510,6 +747,7 @@ public final class MainFrame extends JFrame {
         }
     }
 
+    // Private helper for MainFrame GUI logic
     private void updateSelectedAnimalInfo() {
         Animal animal = selectedAnimal();
         if (animal == null) {
@@ -520,19 +758,23 @@ public final class MainFrame extends JFrame {
                 animal, animal.adoptionFee(), animal.careSchedule()));
     }
 
+    // Private helper for MainFrame GUI logic
     private void log(String message) {
         logArea.append(message + System.lineSeparator());
         logArea.setCaretPosition(logArea.getDocument().getLength());
     }
 
+    // Private helper for MainFrame GUI logic
     private void info(String message) {
         JOptionPane.showMessageDialog(this, message, "Information", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    // Private helper for MainFrame GUI logic
     private void warn(String message) {
         JOptionPane.showMessageDialog(this, message, "Warning", JOptionPane.WARNING_MESSAGE);
     }
 
+    // Private helper for MainFrame GUI logic
     private void error(String title, Exception failure) {
         log(title + ": " + failure.getMessage());
         JOptionPane.showMessageDialog(this, title + "\n" + failure.getMessage(), "Error",
