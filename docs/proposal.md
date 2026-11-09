@@ -1,6 +1,22 @@
 ## cpe314--69323--capstone-team-03
 
-# CPE 314 Capstone Project Proposal — Pet Shelter &amp; Adoption Tracker
+# CPE 314 — Software Design & Software Design Laboratory
+
+## Week 8 — Project Proposal
+
+| Field | Details |
+|---------|---------|
+| **Group Name / No.** | **Group 3** |
+| **Members** | Shann Michael Aagno - UI Designer |
+|  | Sofia Yvonne Enovero - Team Lead / Developer |
+|  | Kyle Cheznie Taghoy - QA (Quality Assurance) |
+|  | Aeisha Mae Elizar - Database Admin |
+|  | Cleint Lausa - Developer |
+| **Repository URL** | `cpe314--69323--capstone-team-03` |
+| **Theme** | Pet Shelter & Adaptation Tracker |
+| **API You Will Use** | - https://dog.ceo/dog-api/documentation<br>- https://thecatapi.com |
+
+---
 
 ## 1. One paragraph Pitch 
 
@@ -66,12 +82,9 @@ system empowers shelter teams to make data-driven decisions and efficiently mana
 ---
 
 ## 6. Risks / Open Questions
-The following items require further clarification or may present implementation challenges:
+- The Stack lets staff undo the last status change, but a status change can also create an AdoptionRecord row in SQLite. When staff undo “Adopted” back to “Available”, should the undo also delete that AdoptionRecord and restore the waitlist entry, or should the record stay and be marked as reversed so the shelter’s history is preserved? 
+- Breed names returned by the APIs (for example retriever/golden) may not match the nodes of our classification tree. Should an unmatched breed fall back to the Dog or Cat root node so that every animal still receives a classification?
+- The adoption waitlist is a Queue held in memory, but waitlist entries are also stored in the waitlist_entry table. Should the queue be rebuilt from that table when the application restarts so that no adopter loses their place in line?
+- Our animal types include “Other”, which neither Dog CEO nor TheCatAPI covers. Is it acceptable for those animals to use a placeholder image?
 
-- How should the application handle situations when an external API becomes unavailable or experiences downtime?
-- Should the SQLite database file be stored within the project directory or in a separate location?
-- Do the JUnit 5 tests need to run successfully without a database connection or network access?
-- If a CSV file contains incorrect or missing data, how do we handle it during import?
-- Is there a required CSV format or row count, or can we define our own?
-- Our animal types include “Other”, which neither Dog CEO nor TheCatAPI covers. Is it acceptable for those animals to use a placeholder image? 
 
