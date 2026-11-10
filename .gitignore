@@ -24,5 +24,10 @@ hs_err_pid*
 replay_pid*
 /target/
 
+.classpath
+.project
+.settings/
+
 # SQLite database (generated on first run)
 *.db
+/bin/

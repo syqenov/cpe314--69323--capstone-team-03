@@ -21,7 +21,11 @@ mvn exec:java
 
 # Option 2: Package first, then run the fat JAR
 mvn package
+<<<<<<< HEAD
 java -jar target/pawtrack.jar
+=======
+java -jar target/pet-shelter-tracker.jar
+>>>>>>> project/milestone-1
 ```
 
 The app opens a Swing window. Close the window to exit.
