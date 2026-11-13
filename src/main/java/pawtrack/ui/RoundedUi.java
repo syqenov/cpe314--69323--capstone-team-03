@@ -348,4 +348,68 @@ public final class RoundedUi {
             super.paintComponent(g);
         }
     }
+
+    /**
+     * A simple animated loading spinner that can be embedded in toolbars or status bars.
+     * Spins continuously while visible.
+     */
+    public static class LoadingSpinner extends JLabel {
+        private static final int SIZE = 16;
+        private static final int FRAMES = 12;
+        private static final int DELAY_MS = 80;
+        private final javax.swing.Timer timer;
+        private int frame = 0;
+
+        public LoadingSpinner() {
+            setPreferredSize(new Dimension(SIZE, SIZE));
+            setMinimumSize(new Dimension(SIZE, SIZE));
+            setMaximumSize(new Dimension(SIZE, SIZE));
+            setOpaque(false);
+            timer = new javax.swing.Timer(DELAY_MS, e -> {
+                frame = (frame + 1) % FRAMES;
+                repaint();
+            });
+            timer.setRepeats(true);
+        }
+
+        public void start() {
+            setVisible(true);
+            timer.start();
+        }
+
+        public void stop() {
+            timer.stop();
+            setVisible(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            if (!isVisible()) {
+                return;
+            }
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(new Color(0x2E608C));
+            int cx = getWidth() / 2;
+            int cy = getHeight() / 2;
+            int r = SIZE / 2 - 2;
+            int spokeLen = r - 2;
+            for (int i = 0; i < FRAMES; i++) {
+                double angle = (i * 2 * Math.PI / FRAMES) + (frame * 2 * Math.PI / FRAMES);
+                int x1 = getWidth() / 2 + (int) (Math.cos(angle) * (r - spokeLen));
+                int y1 = getHeight() / 2 + (int) (Math.sin(angle) * (r - spokeLen));
+                int x2 = getWidth() / 2 + (int) (Math.cos(angle) * r);
+                int y2 = getHeight() / 2 + (int) (Math.sin(angle) * r);
+                float alpha = (FRAMES - i) / (float) FRAMES;
+                g2.setColor(new Color(0x2E608C, (int) (alpha * 255)));
+                g2.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawLine(getWidth() / 2 + (int) (Math.cos(angle) * (r - spokeLen)),
+                        getHeight() / 2 + (int) (Math.sin(angle) * (r - spokeLen)),
+                        getWidth() / 2 + (int) (Math.cos(angle) * r),
+                        getHeight() / 2 + (int) (Math.sin(angle) * r));
+            }
+            g2.dispose();
+        }
+    }
 }

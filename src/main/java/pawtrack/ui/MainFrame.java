@@ -143,6 +143,8 @@ public final class MainFrame extends JFrame {
     private final JLabel imageInfoLabel = new JLabel(" ");
     // Private helper for MainFrame GUI logic
     private final AnalyticsPanel analyticsPanel = new AnalyticsPanel();
+    // Private helper for MainFrame GUI logic
+    private final RoundedUi.LoadingSpinner spinner = new RoundedUi.LoadingSpinner();
 
     public MainFrame(User user, Database database) throws SQLException {
         super("Pet Shelter & Adoption Tracker");
@@ -448,6 +450,11 @@ public final class MainFrame extends JFrame {
             }
         });
         toolbar.add(classificationFilter);
+
+        // Loading spinner next to progress bar
+        spinner.setAlignmentX(Component.CENTER_ALIGNMENT);
+        toolbar.add(spinner);
+
         progressBar.setAlignmentX(Component.CENTER_ALIGNMENT);
         toolbar.add(progressBar);
         return toolbar;
@@ -796,6 +803,7 @@ public final class MainFrame extends JFrame {
         progressBar.setValue(0);
         progressBar.setString("Importing...");
         statusLabel.setText("Importing " + path.getFileName() + " on a background thread...");
+        spinner.start();
 
         importController.importCsv(path,
                 value -> {
@@ -803,6 +811,7 @@ public final class MainFrame extends JFrame {
                     progressBar.setString(value + "%");
                 },
                 result -> {
+                    spinner.stop();
                     progressBar.setString("Done");
                     statusLabel.setText(result.summary());
                     log("Import finished: " + result.summary());
@@ -810,6 +819,7 @@ public final class MainFrame extends JFrame {
                     refreshAnalytics();
                 },
                 failure -> {
+                    spinner.stop();
                     progressBar.setString("Failed");
                     error("Import failed", failure);
                 });
@@ -1296,12 +1306,14 @@ public final class MainFrame extends JFrame {
         imageLabel.setIcon(null);
         imageLabel.setText("Loading...");
         imageInfoLabel.setText(" ");
+        spinner.start();
 
         String breed = animal.getBreed();
         ImageWorker worker = new ImageWorker(service, breed, (int) IMAGE_SIZE.getWidth());
         worker.addPropertyChangeListener(event -> {
             if ("state".equals(event.getPropertyName())
                     && event.getNewValue() == SwingWorker.StateValue.DONE) {
+                spinner.stop();
                 try {
                     ImageWorker.Result result = worker.get();
                     imageLabel.setText("");
