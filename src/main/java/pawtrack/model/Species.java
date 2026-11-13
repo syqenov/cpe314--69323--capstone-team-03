@@ -1,5 +1,9 @@
 package pawtrack.model;
 
+/**
+ * The animal species modelled by the shelter. Each species is realised by a
+ * concrete {@link Animal} subclass (Dog, Cat, OtherAnimal).
+ */
 public enum Species {
     DOG("Dog"),
     CAT("Cat");

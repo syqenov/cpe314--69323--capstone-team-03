@@ -2,6 +2,12 @@ package pawtrack.model;
 
 import java.time.LocalDate;
 
+/**
+ * Concrete {@link Animal} implementation for cats.
+ *
+ * <p>Cats have a lower standard fee than dogs and reach senior status later
+ * (10 years), which changes both the fee and the care schedule.</p>
+ */
 public final class Cat extends Animal {
 
     public static final double KITTEN_FEE = 200.0;

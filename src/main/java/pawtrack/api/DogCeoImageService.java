@@ -1,26 +1,27 @@
 package pawtrack.api;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
+import pawtrack.dto.DogCeoResponse;
 import pawtrack.model.Species;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 /**
- * Client for the <a href="https://dog.ceo/dog-api/documentation">Dog CEO API</a>
- * (no API key required).
- *
- * <p>It pulls both sample images and the breed catalogue, which is a JSON tree
- * that is walked recursively by {@link #collectBreeds(JSONObject, List)}.</p>
+ * Client for the Dog CEO API.
  */
 public final class DogCeoImageService implements PetImageService {
 
     private static final String BASE = "https://dog.ceo/api";
+    private static final Gson GSON = new Gson();
+    private static final java.util.logging.Logger LOGGER =
+            java.util.logging.Logger.getLogger(DogCeoImageService.class.getName());
 
     /** Flattened breed entry from {@code /breeds/list/all}. */
     public record BreedEntry(String slug, String displayName) {
@@ -50,10 +51,6 @@ public final class DogCeoImageService implements PetImageService {
         return parseBreedList(json);
     }
 
-    /**
-     * Maps a free-text breed onto a Dog CEO path such as {@code retriever/golden}
-     * by matching against the live breed catalogue from the API.
-     */
     String resolveBreedPath(String breed) throws IOException {
         if (breed == null || breed.isBlank()) {
             return null;
@@ -67,6 +64,7 @@ public final class DogCeoImageService implements PetImageService {
             }
         } catch (IOException ignored) {
             // offline / rate limited: fall back to a best-effort slug below
+            DogCeoImageService.LOGGER.fine("Breed catalogue unavailable, using best-effort slug for: " + breed);
         }
         String[] words = breed.toLowerCase(Locale.ROOT).trim().split("\\s+");
         return words[words.length - 1].replaceAll("[^a-z0-9]", "");
@@ -78,15 +76,19 @@ public final class DogCeoImageService implements PetImageService {
 
     /** Parses {@code {"message":"https://...","status":"success"}}. */
     public static String parseImageUrl(String json) {
-        JSONObject root = new JSONObject(json);
-        if (!"success".equalsIgnoreCase(root.optString("status"))) {
-            throw new IllegalArgumentException("Dog CEO API error: " + root.optString("message"));
+        try {
+            DogCeoResponse response = GSON.fromJson(json, DogCeoResponse.class);
+            if (response == null || !"success".equalsIgnoreCase(response.status())) {
+                throw new IllegalArgumentException("Dog CEO API error: " + (response == null ? "" : response.message()));
+            }
+            String message = response.message();
+            if (message == null || message.isBlank()) {
+                throw new IllegalArgumentException("Dog CEO API returned an empty image url");
+            }
+            return message;
+        } catch (JsonSyntaxException e) {
+            throw new IllegalArgumentException("Dog CEO API returned invalid JSON", e);
         }
-        String message = root.optString("message", "");
-        if (message.isBlank()) {
-            throw new IllegalArgumentException("Dog CEO API returned an empty image url");
-        }
-        return message;
     }
 
     /**
@@ -94,16 +96,20 @@ public final class DogCeoImageService implements PetImageService {
      * {@code /breeds/list/all} into a list of breed entries.
      */
     public static List<BreedEntry> parseBreedList(String json) {
-        JSONObject root = new JSONObject(json);
-        if (!"success".equalsIgnoreCase(root.optString("status"))) {
-            throw new IllegalArgumentException("Dog CEO breed list request failed");
+        try {
+            JSONObject obj = new JSONObject(json);
+            if (!"success".equalsIgnoreCase(obj.optString("status"))) {
+                throw new IllegalArgumentException("Dog CEO breed list request failed");
+            }
+            List<BreedEntry> breeds = new ArrayList<>();
+            JSONObject message = obj.optJSONObject("message");
+            if (message != null) {
+                collectBreeds(message, breeds);
+            }
+            return breeds;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Dog CEO breed list request failed", e);
         }
-        JSONObject message = root.optJSONObject("message");
-        List<BreedEntry> breeds = new ArrayList<>();
-        if (message != null) {
-            collectBreeds(message, breeds);
-        }
-        return breeds;
     }
 
     private static void collectBreeds(JSONObject node, List<BreedEntry> out) {
@@ -133,14 +139,5 @@ public final class DogCeoImageService implements PetImageService {
             builder.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
         }
         return builder.toString();
-    }
-
-    /** Utility used by the GUI to show which breeds the provider knows. */
-    public Map<String, String> breedDisplayNames() throws IOException {
-        Map<String, String> names = new LinkedHashMap<>();
-        for (BreedEntry entry : fetchBreedCatalogue()) {
-            names.put(entry.slug(), entry.displayName());
-        }
-        return names;
     }
 }
