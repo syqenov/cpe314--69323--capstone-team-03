@@ -6,6 +6,8 @@ import pawtrack.dto.CatImageDto;
 import pawtrack.model.Species;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -51,7 +53,28 @@ public final class CatApiImageService implements PetImageService {
         if (apiKey != null && !apiKey.isBlank()) {
             headers.put("x-api-key", apiKey);
         }
-        String json = HttpJson.get(BASE + "/images/search?limit=1&has_breeds=1", headers);
+
+        String url = BASE + "/images/search?limit=1&has_breeds=1";
+        if (breed != null && !breed.isBlank()) {
+            try {
+                String breedsJson = HttpJson.get(BASE + "/breeds", headers);
+                Map<String, String> breedMap = parseBreedList(breedsJson);
+                String breedId = null;
+                for (Map.Entry<String, String> entry : breedMap.entrySet()) {
+                    if (entry.getValue().equalsIgnoreCase(breed.trim()) || entry.getKey().equalsIgnoreCase(breed.trim())) {
+                        breedId = entry.getKey();
+                        break;
+                    }
+                }
+                if (breedId != null) {
+                    url = BASE + "/images/search?limit=1&breed_ids=" + URLEncoder.encode(breedId, StandardCharsets.UTF_8);
+                }
+            } catch (Exception ignored) {
+                // Fallback to general search if breed lookup fails
+            }
+        }
+
+        String json = HttpJson.get(url, headers);
         return new PetImageResult(parseImageUrl(json), Species.CAT, breed == null ? "" : breed, providerName());
     }
 
