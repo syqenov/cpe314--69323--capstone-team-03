@@ -634,9 +634,42 @@ public final class MainFrame extends JFrame {
         refreshItem.addActionListener(e -> onRefreshAnimals());
         contextMenu.add(refreshItem);
 
+        contextMenu.add(buildColumnVisibilityMenu());
+
         animalTable.setComponentPopupMenu(contextMenu);
 
         return panel;
+    }
+
+    // Private helper for MainFrame GUI logic
+    private JMenu buildColumnVisibilityMenu() {
+        JMenu columnMenu = new JMenu("Columns");
+        for (int i = 0; i < animalTable.getColumnCount(); i++) {
+            final int colIndex = i;
+            final String colName = animalTable.getColumnName(i);
+            JCheckBoxMenuItem item = new JCheckBoxMenuItem(colName, true);
+            item.addActionListener(e -> {
+                javax.swing.table.TableColumn column = animalTable.getColumnModel().getColumn(colIndex);
+                column.setMinWidth(item.isSelected() ? 50 : 0);
+                column.setMaxWidth(item.isSelected() ? Integer.MAX_VALUE : 0);
+                column.setPreferredWidth(item.isSelected() ? 100 : 0);
+                column.setResizable(item.isSelected());
+            });
+            columnMenu.add(item);
+        }
+        return columnMenu;
+    }
+
+    // Private helper for MainFrame GUI logic
+    private void rebuildColumnVisibilityMenu(JPopupMenu contextMenu) {
+        // Remove existing column menu if present
+        for (java.awt.Component comp : contextMenu.getComponents()) {
+            if (comp instanceof JMenu && ((JMenu) comp).getText().equals("Columns")) {
+                contextMenu.remove(comp);
+                break;
+            }
+        }
+        contextMenu.add(buildColumnVisibilityMenu());
     }
 
     // Private helper for MainFrame GUI logic
