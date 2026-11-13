@@ -145,6 +145,8 @@ public final class MainFrame extends JFrame {
     private final AnalyticsPanel analyticsPanel = new AnalyticsPanel();
     // Private helper for MainFrame GUI logic
     private final RoundedUi.LoadingSpinner spinner = new RoundedUi.LoadingSpinner();
+    // Private helper for MainFrame GUI logic
+    private boolean rowStripingEnabled = true;
 
     public MainFrame(User user, Database database) throws SQLException {
         super("Pet Shelter & Adoption Tracker");
@@ -634,6 +636,13 @@ public final class MainFrame extends JFrame {
         refreshItem.addActionListener(e -> onRefreshAnimals());
         contextMenu.add(refreshItem);
 
+        JCheckBoxMenuItem stripingItem = new JCheckBoxMenuItem("Alternating Row Colors", rowStripingEnabled);
+        stripingItem.addActionListener(e -> {
+            rowStripingEnabled = stripingItem.isSelected();
+            animalTable.repaint();
+        });
+        contextMenu.add(stripingItem);
+
         contextMenu.add(buildColumnVisibilityMenu());
 
         animalTable.setComponentPopupMenu(contextMenu);
@@ -688,7 +697,7 @@ public final class MainFrame extends JFrame {
     }
 
     /** Alternating blue-white rows and consistent readable table typography. */
-    private static final class BlueTableRenderer extends javax.swing.table.DefaultTableCellRenderer {
+    private final class BlueTableRenderer extends javax.swing.table.DefaultTableCellRenderer {
         @Override
         public java.awt.Component getTableCellRendererComponent(javax.swing.JTable table, Object value,
                 boolean isSelected, boolean hasFocus, int row, int column) {
@@ -698,7 +707,7 @@ public final class MainFrame extends JFrame {
             setBorder(BorderFactory.createEmptyBorder(4, 7, 4, 7));
             setForeground(NAVY_BLUE);
             setBackground(isSelected ? new Color(0xC5DFF3)
-                    : (row % 2 == 0 ? Color.WHITE : ALT_ROW_BLUE));
+                    : (rowStripingEnabled && row % 2 == 0 ? Color.WHITE : ALT_ROW_BLUE));
             if (column == 0 || column >= 2) {
                 setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
             } else {
