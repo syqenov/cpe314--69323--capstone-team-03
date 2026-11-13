@@ -3,6 +3,9 @@ package pawtrack.model;
 import java.time.LocalDate;
 import java.util.Objects;
 
+/**
+ * Completed adoption joining an {@link Animal} with an {@link Adopter}.
+ */
 public final class AdoptionRecord {
 
     private int id;
