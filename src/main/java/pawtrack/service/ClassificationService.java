@@ -1,6 +1,6 @@
 package pawtrack.service;
 
-import pawtrack.db.ClassificationDao;
+import pawtrack.dao.ClassificationDao;
 import pawtrack.model.ClassificationNode;
 import pawtrack.model.Species;
 
@@ -27,7 +27,44 @@ public final class ClassificationService {
         this.root = root;
     }
 
-
+    /**
+     * Builds the seeded taxonomy used the first time the app runs.
+     *
+     * <pre>
+     * All Animals
+     *  +- Dog
+     *  |   +- Sporting Group
+     *  |   |   +- Retriever
+     *  |   |   |   +- Golden Retriever
+     *  |   |   |   +- Labrador Retriever
+     *  |   |   +- Spaniel
+     *  |   |       +- Cocker Spaniel
+     *  |   +- Herding Group
+     *  |   |   +- German Shepherd
+     *  |   |   +- Collie
+     *  |   +- Non-Sporting Group
+     *  |       +- Poodle
+     *  |       +- Bulldog
+     *  +- Cat
+     *  |   +- Domestic
+     *  |   |   +- Domestic Shorthair
+     *  |   |   +- Domestic Longhair
+     *  |   +- Pedigree
+     *  |       +- Persian
+     *  |       +- Siamese
+     *  |       +- Maine Coon
+     *  +- Small Mammals
+     *  |   +- Rabbit
+     *  |   +- Guinea Pig
+     *  |   +- Hamster
+     *  +- Birds
+     *  |   +- Parakeet
+     *  |   +- Cockatiel
+     *  +- Reptiles
+     *      +- Turtle
+     *      +- Gecko
+     * </pre>
+     */
     public static ClassificationNode defaultTaxonomy() {
         ClassificationNode root = new ClassificationNode(0, "All Animals");
 
