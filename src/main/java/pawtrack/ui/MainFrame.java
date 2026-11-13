@@ -35,25 +35,32 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
-import java.awt.CardLayout;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.KeyStroke;
 import javax.swing.SwingWorker;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -149,6 +156,20 @@ public final class MainFrame extends JFrame {
     private boolean rowStripingEnabled = true;
     // Private helper for MainFrame GUI logic
     private final JLabel connectionStatusLabel = new JLabel("● Connected");
+    // Private helper for MainFrame GUI logic
+    private boolean darkMode = false;
+    // Private helper for MainFrame GUI logic
+    private JPanel statusBar;
+    // Private helper for MainFrame GUI logic
+    private JPanel previewCard;
+    // Private helper for MainFrame GUI logic
+    private JPanel userProfilePanel;
+    // Private helper for MainFrame GUI logic
+    private JLabel caption;
+    // Private helper for MainFrame GUI logic
+    private JLabel username;
+    // Private helper for MainFrame GUI logic
+    private JLabel role;
 
     public MainFrame(User user, Database database) throws SQLException {
         super("Pet Shelter & Adoption Tracker");
@@ -249,7 +270,8 @@ public final class MainFrame extends JFrame {
         }
 
         add(buildImagePanel(), BorderLayout.EAST);
-        add(buildStatusBar(), BorderLayout.SOUTH);
+        this.statusBar = buildStatusBar();
+        add(statusBar, BorderLayout.SOUTH);
 
         progressBar.setStringPainted(true);
         progressBar.setString("");
@@ -458,6 +480,20 @@ public final class MainFrame extends JFrame {
         // Loading spinner next to progress bar
         spinner.setAlignmentX(Component.CENTER_ALIGNMENT);
         toolbar.add(spinner);
+
+        progressBar.setAlignmentX(Component.CENTER_ALIGNMENT);
+        toolbar.add(progressBar);
+
+        // Theme toggle button
+        RoundedUi.RoundedButton themeButton = new RoundedUi.RoundedButton(darkMode ? "☀ Light" : "🌙 Dark", 18, new Color(0x5D8AA8))
+                .setTooltip("Toggle dark/light theme (Ctrl+T)");
+        themeButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        themeButton.setPreferredSize(new Dimension(120, 36));
+        themeButton.setMinimumSize(new Dimension(100, 36));
+        themeButton.setMaximumSize(new Dimension(140, 36));
+        themeButton.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        themeButton.addActionListener(e -> toggleTheme());
+        toolbar.add(themeButton);
 
         progressBar.setAlignmentX(Component.CENTER_ALIGNMENT);
         toolbar.add(progressBar);
@@ -806,7 +842,7 @@ public final class MainFrame extends JFrame {
 
     private void checkConnection() {
         try {
-            database.getConnection().isValid(2);
+            database.connection().isValid(2);
             connectionStatusLabel.setText("● Connected");
             connectionStatusLabel.setForeground(new Color(0x27AE60));
         } catch (Exception e) {
@@ -873,6 +909,68 @@ public final class MainFrame extends JFrame {
         button.setFont(BODY_FONT);
         button.addActionListener(event -> action.run());
         return button;
+    }
+
+    /** Toggles between light and dark theme. */
+    private void toggleTheme() {
+        darkMode = !darkMode;
+        Color bg = darkMode ? new Color(0x1E1E1E) : PANEL_BLUE;
+        Color fg = darkMode ? Color.WHITE : NAVY_BLUE;
+        Color panelBg = darkMode ? new Color(0x2D2D2D) : PANEL_BLUE;
+        Color tableBg = darkMode ? new Color(0x3C3C3C) : TABLE_BLUE;
+        Color altRow = darkMode ? new Color(0x333333) : ALT_ROW_BLUE;
+        Color border = darkMode ? new Color(0x444444) : BORDER_BLUE;
+        Color toolbarBg = darkMode ? new Color(0x252525) : TOOLBAR_BLUE;
+
+        getContentPane().setBackground(bg);
+        setBackground(bg);
+        contentPanel.setBackground(bg);
+        toolbar.setBackground(toolbarBg);
+        imagePanel.setBackground(bg);
+        analyticsPanel.setBackground(bg);
+        logArea.setBackground(bg);
+        logArea.setForeground(fg);
+        statusBar.setBackground(bg);
+        statusLabel.setForeground(fg);
+        connectionStatusLabel.setForeground(fg);
+        animalTable.setBackground(tableBg);
+        animalTable.setForeground(fg);
+        animalTable.setGridColor(border);
+        animalTable.setSelectionBackground(darkMode ? new Color(0x555555) : new Color(0xC5DFF3));
+        animalTable.setSelectionForeground(fg);
+        imageLabel.setBackground(darkMode ? new Color(0x3C3C3C) : new Color(0xEAF3FA));
+        imageLabel.setForeground(fg);
+        imageInfoLabel.setForeground(fg);
+        previewCard.setBackground(darkMode ? new Color(0x2D2D2D) : new Color(0xF7FBFF));
+        userProfilePanel.setBackground(darkMode ? new Color(0x333333) : new Color(0xD8EAF7));
+        caption.setForeground(darkMode ? new Color(0xAAAAAA) : new Color(0x52738D));
+        username.setForeground(fg);
+        role.setForeground(PRIMARY_BLUE);
+        statusBar.setBackground(bg);
+        statusLabel.setForeground(fg);
+        classificationFilter.setBackground(darkMode ? new Color(0x3C3C3C) : new Color(0xF7FBFF));
+        classificationFilter.setForeground(fg);
+        progressBar.setForeground(darkMode ? new Color(0x4A90D9) : PRIMARY_BLUE);
+        spinner.stop(); // Reset spinner color
+        // Re-apply cell renderers
+        animalTable.setDefaultRenderer(Object.class, new BlueTableRenderer());
+        animalTable.setDefaultRenderer(Number.class, new BlueTableRenderer());
+        animalTable.repaint();
+        logArea.setCaretColor(fg);
+        myRecordsArea.setBackground(bg);
+        myRecordsArea.setForeground(fg);
+        waitlistTable.setBackground(tableBg);
+        waitlistTable.setForeground(fg);
+        statusPopup = null; // Force rebuild with new colors
+
+        // Update tab button colors
+        for (RoundedUi.RoundedButton btn : tabButtons) {
+            btn.setBaseColor(btn.getText().equals(tabNames.get(0)) ? TAB_SELECTED_COLOR : 
+                (darkMode ? new Color(0x3D3D3D) : TAB_COLOR));
+        }
+
+        repaint();
+        revalidate();
     }
 
     // ------------------------------------------------------------- actions

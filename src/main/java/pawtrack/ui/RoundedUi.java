@@ -3,14 +3,18 @@ package pawtrack.ui;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JLabel;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
+import javax.swing.Timer;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
@@ -402,7 +406,8 @@ public final class RoundedUi {
                 int x2 = getWidth() / 2 + (int) (Math.cos(angle) * r);
                 int y2 = getHeight() / 2 + (int) (Math.sin(angle) * r);
                 float alpha = (FRAMES - i) / (float) FRAMES;
-                g2.setColor(new Color(0x2E608C, (int) (alpha * 255)));
+                int alphaInt = (int) (alpha * 255);
+                g2.setColor(new Color(0x2E, 0x60, 0x8C, alphaInt));
                 g2.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 g2.drawLine(getWidth() / 2 + (int) (Math.cos(angle) * (r - spokeLen)),
                         getHeight() / 2 + (int) (Math.sin(angle) * (r - spokeLen)),
