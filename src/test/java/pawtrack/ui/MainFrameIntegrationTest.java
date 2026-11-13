@@ -42,7 +42,7 @@ class MainFrameIntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
         mockDatabase = mock(Database.class);
-        testUser = new User("testuser", "test@example.com", "password", Role.STAFF);
+        testUser = new User(1, "testuser", "hash", "salt", Role.STAFF, null);
         
         // Create MainFrame with mocked dependencies
         AnimalDao mockAnimalDao = mock(AnimalDao.class);
@@ -66,7 +66,6 @@ class MainFrameIntegrationTest {
         ClassificationController mockClassificationController = mock(ClassificationController.class);
         ImportController mockImportController = mock(ImportController.class);
         
-        when(mockClassificationDao.loadOrSeed()).thenReturn(mockClassification);
         when(mockSeeder.seedIfEmpty(any(), any())).thenReturn(null);
         
         // Use reflection to set final fields

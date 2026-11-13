@@ -195,4 +195,17 @@ public final class BarChartPanel extends JComponent {
         }
         return nice * base;
     }
+
+    // Getters for testing
+    public String getTitle() {
+        return title;
+    }
+
+    public String getEmptyMessage() {
+        return emptyMessage;
+    }
+
+    public String getValueFormat() {
+        return valueFormat;
+    }
 }

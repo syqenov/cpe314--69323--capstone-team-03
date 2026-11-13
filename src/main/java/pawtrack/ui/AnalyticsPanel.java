@@ -131,4 +131,21 @@ public final class AnalyticsPanel extends JPanel {
         }
         return positive;
     }
+
+    // Getters for testing
+    public BarChartPanel getChart() {
+        return chart;
+    }
+
+    public JTextArea getSummary() {
+        return summary;
+    }
+
+    public JComboBox<String> getMetricBox() {
+        return metricBox;
+    }
+
+    public JButton getRefreshButton() {
+        return refreshButton;
+    }
 }

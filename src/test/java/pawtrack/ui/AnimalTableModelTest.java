@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import pawtrack.model.Animal;
 import pawtrack.model.AnimalStatus;
+import pawtrack.model.Species;
 import pawtrack.service.WaitlistService;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -25,7 +26,7 @@ class AnimalTableModelTest {
 
     @Test
     void testSetAnimals() {
-        var animal = new Animal("Test Dog", "Buddy", "Labrador", AnimalStatus.AVAILABLE, 1, 100.0);
+        var animal = Animal.create(Species.DOG, 1, "Buddy", "Labrador", 12, java.time.LocalDate.now(), AnimalStatus.AVAILABLE);
         model.setAnimals(java.util.List.of(animal));
         assertEquals(1, model.getRowCount());
         assertEquals("Buddy", model.getValueAt(0, 1));
@@ -49,7 +50,7 @@ class AnimalTableModelTest {
 
     @Test
     void testWaitlistColumnShowsCount() {
-        var animal = new Animal("Test Cat", "Whiskers", "Siamese", AnimalStatus.AVAILABLE, 1, 50.0);
+        var animal = Animal.create(Species.CAT, 1, "Whiskers", "Siamese", 12, java.time.LocalDate.now(), AnimalStatus.AVAILABLE);
         waitlist.addInterest(1, new pawtrack.model.Adopter("John", "john@test.com", "555-1234"));
         model.setAnimals(java.util.List.of(animal));
         assertEquals("1", model.getValueAt(0, 6));

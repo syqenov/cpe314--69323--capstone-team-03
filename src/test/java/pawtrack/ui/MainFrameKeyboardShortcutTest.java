@@ -27,7 +27,7 @@ class MainFrameKeyboardShortcutTest {
     @BeforeEach
     void setUp() throws Exception {
         mockDatabase = mock(Database.class);
-        testUser = new User("testuser", "test@example.com", "password", Role.STAFF);
+        testUser = new User(1, "testuser", "hash", "salt", Role.STAFF, null);
         
         // Mock all DAOs
         AnimalDao mockAnimalDao = mock(AnimalDao.class);
@@ -53,7 +53,6 @@ class MainFrameKeyboardShortcutTest {
         ClassificationController mockClassificationController = mock(ClassificationController.class);
         ImportController mockImportController = mock(ImportController.class);
         
-        when(mockClassificationDao.loadOrSeed()).thenReturn(mock(ClassificationService.class));
         when(mockSeeder.seedIfEmpty(any(), any())).thenReturn(null);
         
         frame = new MainFrame(testUser, mockDatabase);

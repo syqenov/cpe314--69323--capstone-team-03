@@ -1710,6 +1710,11 @@ public final class MainFrame extends JFrame {
     }
 
     // Private helper for MainFrame GUI logic
+    public User getUser() {
+        return user;
+    }
+
+    // Private helper for MainFrame GUI logic
     private void refreshAnalytics() {
         AnalyticsController.AnalyticsSnapshot snapshot = analyticsController.compute();
         analyticsPanel.showReport(snapshot.report(), snapshot.classCounts(), snapshot.totalWaiters());
