@@ -183,21 +183,23 @@ public final class MainFrame extends JFrame {
 
     // ------------------------------------------------------------------ UI
 
-    // Private helper for MainFrame GUI logic
-    private void buildUi() {
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLayout(new BorderLayout(8, 8));
-        setMinimumSize(new Dimension(1100, 680));
-        java.awt.Image icon = Icons.appIcon();
-        if (icon != null) {
-            setIconImage(icon);
-        }
-        getContentPane().setBackground(PANEL_BLUE);
-        javax.swing.UIManager.put("Label.font", BODY_FONT);
-        javax.swing.UIManager.put("Button.font", BODY_FONT);
-        javax.swing.UIManager.put("Table.font", BODY_FONT);
-        javax.swing.UIManager.put("TableHeader.font", LABEL_FONT);
-        javax.swing.UIManager.put("ComboBox.font", BODY_FONT);
+// Private helper for MainFrame GUI logic
+        private void buildUi() {
+            setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            setLayout(new BorderLayout(8, 8));
+            setMinimumSize(new Dimension(1100, 680));
+            java.awt.Image icon = Icons.appIcon();
+            if (icon != null) {
+                setIconImage(icon);
+            }
+            getContentPane().setBackground(PANEL_BLUE);
+            javax.swing.UIManager.put("Label.font", BODY_FONT);
+            javax.swing.UIManager.put("Button.font", BODY_FONT);
+            javax.swing.UIManager.put("Table.font", BODY_FONT);
+            javax.swing.UIManager.put("TableHeader.font", LABEL_FONT);
+            javax.swing.UIManager.put("ComboBox.font", BODY_FONT);
+
+            setupKeyboardShortcuts();
 
         // Keep a small gap between the panel content and its scrollbar.
         JPanel toolbarHolder = new JPanel(new BorderLayout());
@@ -1306,6 +1308,72 @@ public final class MainFrame extends JFrame {
             }
         });
         worker.execute();
+    }
+
+    // ------------------------------------------------------------- helpers
+
+    /** Sets up keyboard shortcuts and mnemonics for the main window. */
+    private void setupKeyboardShortcuts() {
+        javax.swing.InputMap im = getRootPane().getInputMap(javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW);
+        javax.swing.ActionMap am = getRootPane().getActionMap();
+
+        // Ctrl+R: Refresh animals
+        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_DOWN_MASK), "refreshAnimals");
+        am.put("refreshAnimals", new javax.swing.AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                onRefreshAnimals();
+            }
+        });
+
+        // Ctrl+F: Focus classification filter
+        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F, java.awt.event.InputEvent.CTRL_DOWN_MASK), "focusFilter");
+        am.put("focusFilter", new javax.swing.AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                classificationFilter.requestFocusInWindow();
+            }
+        });
+
+        // Ctrl+I: Import CSV
+        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_I, java.awt.event.InputEvent.CTRL_DOWN_MASK), "importCsv");
+        am.put("importCsv", new javax.swing.AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                onImportCsv();
+            }
+        });
+
+        // Ctrl+U: Undo last status change
+        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_U, java.awt.event.InputEvent.CTRL_DOWN_MASK), "undo");
+        am.put("undo", new javax.swing.AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                onUndo();
+            }
+        });
+
+        // F5: Refresh analytics
+        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F5, 0), "refreshAnalytics");
+        am.put("refreshAnalytics", new javax.swing.AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                refreshAnalytics();
+            }
+        });
+
+        // Escape: Close any open dialogs/popups
+        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0), "escape");
+        am.put("escape", new javax.swing.AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (statusPopup != null) {
+                    statusPopup.setVisible(false);
+                    statusPopup.dispose();
+                    statusPopup = null;
+                }
+            }
+        });
     }
 
     // ------------------------------------------------------------- helpers
