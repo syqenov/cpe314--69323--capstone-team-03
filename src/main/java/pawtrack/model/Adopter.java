@@ -3,6 +3,10 @@ package pawtrack.model;
 import java.util.Locale;
 import java.util.Objects;
 
+/**
+ * Person who may express interest in an animal and/or complete an adoption.
+ * The email is the natural key used to de-duplicate waitlist entries.
+ */
 public final class Adopter {
 
     private int id;
