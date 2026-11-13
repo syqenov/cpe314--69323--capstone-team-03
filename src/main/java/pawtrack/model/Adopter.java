@@ -1,5 +1,6 @@
 package pawtrack.model;
 
+import java.time.LocalDate;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -13,8 +14,9 @@ public final class Adopter {
     private final String name;
     private final String email;
     private final String phone;
+    private final LocalDate createdAt;
 
-    public Adopter(int id, String name, String email, String phone) {
+    public Adopter(int id, String name, String email, String phone, LocalDate createdAt) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Adopter name must not be blank");
         }
@@ -25,10 +27,15 @@ public final class Adopter {
         this.name = name.trim();
         this.email = email.trim();
         this.phone = phone == null ? "" : phone.trim();
+        this.createdAt = createdAt == null ? LocalDate.now() : createdAt;
     }
 
     public Adopter(String name, String email, String phone) {
-        this(0, name, email, phone);
+        this(0, name, email, phone, LocalDate.now());
+    }
+
+    public Adopter(int id, String name, String email, String phone) {
+        this(id, name, email, phone, LocalDate.now());
     }
 
     public void assignId(int generatedId) {
@@ -51,6 +58,10 @@ public final class Adopter {
 
     public String getPhone() {
         return phone;
+    }
+
+    public LocalDate getCreatedAt() {
+        return createdAt;
     }
 
     @Override
