@@ -18,54 +18,39 @@
 
 # Table of Contents
 
-- Pet Shelter & Adoption Tracker  ........................................................................................................................................................... 1
-  - Table of Contents ................................................................................................................................................................... 2
-  - Revision History ...................................................................................................................................................................... 3
-  - 1. Introduction & Project Overview ............................................................................................................................ 3
-  - 2. Preliminary ER Sketch & Team Role ....................................................................................................................... 4
-    - Table 1: Preliminary entities and key attributes ................................................................................... 5
-    - Table 2: Preliminary relationships and cardinality ............................................................................... 5
-    - Table 3: Team members and primary roles ............................................................................................ 5
-  - 3. System Architecture & Object-Oriented Design ............................................................................................... 6
-    - 3.1 Class Hierarchy - PawTrack: Pet Shelter & Adoption Tracker .................................................. 6
-    - 3.2 Single Responsibility Principle Justification Table  ....................................................................... 6
-    - 3.3 Design Rationale: PawTrack ................................................................................................................. 8
-  - 4. Data Model & Database Design ............................................................................................................................. 9
-    - 4.1 ER Diagram ................................................................................................................................................ 9
-    - 4.2 SQLite schema .......................................................................................................................................... 9
-  - 5. API Integration Design.................................................................................................................................................10 
-    - 5.1 API 1: Dog CEO API (https://dog.ceo/dog-api/) .........................................................................10 
-    - 5.2 API 2: TheCatAPI (https://thecatapi.com/) ....................................................................................11 
-    - 5.3 Error Handling...........................................................................................................................................11 
-    - 5.4 Example JSON Responses.....................................................................................................................11 
-  - 6. Concurrency Design.......................................................................................................................................................12 
-    - 6.1 Background Operations.........................................................................................................................12 
-    - 6.2 How the Background Work Runs.......................................................................................................12 
-    - 6.3 Keeping the UI Responsive...................................................................................................................13 
-  - 7. Data Mining & Visualization Design.......................................................................................................................13 
-    - 7.1 Data Mining and Aggregation.............................................................................................................13 
-    - 7.2 Recursive Classification Analysis.........................................................................................................14 
-    - 7.3 Data Visualization.....................................................................................................................................14 
-   <br>
+- Pet Shelter & Adoption Tracker  ....................................................................................................................... 1
+  - Table of Contents ............................................................................................................................... 2
+  - Revision History .................................................................................................................................. 3
+  - 1. Introduction & Project Overview ........................................................................................ 3
+  - 2. Preliminary ER Sketch & Team Roles ................................................................................. 4
+    - Table 1: Preliminary Entities and Key Attributes ....................................................... 5
+    - Table 2: Preliminary Relationships and Cardinality ................................................... 5
+    - Table 3: Team Members and Primary Roles ................................................................ 5
+  - 3. System Architecture & Object-Oriented Design ........................................................... 6
+    - 3.1 Class Hierarchy - PawTrack: Pet Shelter & Adoption Tracker ............................. 6
+    - 3.2 Single Responsibility Principle Justification Table ................................................ 6
+    - 3.3 Design Rationale: PawTrack ............................................................................................ 8
+  - 4. Data Model & Database Design ......................................................................................... 9
+    - 4.1 ER Diagram ........................................................................................................................... 9
+    - 4.2 SQLite Schema ..................................................................................................................... 9
+
+<br>
+
 ## Revision History
 
 | Version | Date | Author | Changes |
 | :---: | :--- | :--- | :--- |
-| 0.1 | Nov. 6, 2026 | Sofia Yvonne Enovero | Add section 1 One paragraph Pitch |
-| |  | Shann Michael Agang | Add Section 2 Entity-Relationship |
-|  |  | Kyle Cheznie Taghoy | Add ER Sketch |
-|  |  | Aeisha Mae Elizar | Update Section 2 Table 2 |
-|  |  | Cleint Lausa | Add Task Split Table |
+| 0.1 | Oct 22, 2026 | Sofia Yvonne Enovero | Add section 1 One paragraph Pitch |
+| 0.1 | Oct 22, 2026 | Shann Michael Agang | Add Section 2 Entity-Relationship |
+| 0.1 | Oct 22, 2026 | Kyle Cheznie Taghoy | Add ER Sketch |
+| 0.1 | Oct 23, 2026 | Aeisha Mae Elizar | Update Section 2 Table 2 |
+| 0.1 | Oct 23, 2026 | Cleint Lausa | Add Task Split Table |
 | 0.2 | Oct. 27, 2026 | Kyle Cheznie Taghoy | Add Class Hierarchy Diagram |
-| |  | Cleint Lausa | Update SRP Table |
-| |  | Aeisha Mae Elizar | Add Design Rationale |
-| |  | Sofia Yvonne Enovero | Update ER diagram |
-|  |  | Shann Michael Agang | Add Database SQL Schema |
-| 0.3 | Nov. 3, 2026 | Kyle Cheznie Taghoy | Add the subsection 5.1 and 5.2 table |
-|  |  | Aeisha Elizar | Add Error handling and json example |
-|  |  | Shann Michael Agang | Added Concurrency Design |
-|  |  | Sofia Yvonne Enovero | Add 7.1 table and 7.2 subsection |
-|  |  | Cleint Lausa | Add Data Visualization |
+| 0.2 | Oct. 27, 2026 | Cleint Lausa | Update SRP Table |
+| 0.2 | Oct. 27, 2026 | Aeisha Mae Elizar | Add Design Rationale |
+| 0.2 | Oct. 27, 2026 | Sofia Yvonne Enovero | Update ER diagram |
+| 0.2 | Oct. 27, 2026 | Shann Michael Agang | Add Database SQL Schema |
+
 <br>
 
 ## 1. Introduction & Project Overview
@@ -75,7 +60,6 @@
 <br>
 
 ## 2. Preliminary ER Sketch & Team Roles
-![Finalized ERD](./er-diagram.png)
 
 ### Table 1: Preliminary Entities and Key Attributes
 
@@ -246,159 +230,3 @@ CREATE TABLE IF NOT EXISTS waitlist_entry (
   UNIQUE(animal_id, adopter_id)
 );
 ```
-
-## 5. API Integration Design
-
-The Pet Shelter & Adoption Tracker (PawTrack) consumes two public REST APIs to fetch sample pet images. The integrations are hidden behind a common PetImageService interface, and PetImageServiceFactory chooses the right one from the animal’s species. Each service sends an HTTP GET request through HttpJson, parses the JSON response with org.json, and returns the result as a PetImageResult (image URL, species, breed, and provider name). The GUI shows the image and provider in the “Sample Pet Image” panel when staff select an animal and click Fetch Sample Pet Image.
-
-### 5.1 API 1: Dog CEO API (https://dog.ceo/dog-api/)
-
-The Dog CEO API provides dog images and a catalogue of breeds. It needs no API key.
-
-**Table 4. Dog CEO API Integration**
-
-| **Endpoint (HTTP GET)** | **JSON Response Shape** | **Parsing and Use in PawTrack** |
-| --- | --- | --- |
-| https://dog.ceo/api/breeds/list/all | message: an object that maps each breed to a list of sub-breeds. status: request status. | The app reads the object and converts breed and sub-breed pairs into readable names, for example retriever + golden becomes “Golden Retriever”. It uses this list to find the API path that matches the animal’s recorded breed. |
-| https://dog.ceo/api/breed/{path}/images/random | message: a string containing one image URL.  status: request status. | The app extracts the image URL and stores it in a PetImageResult. For example, the path retriever/golden returns a Golden Retriever image. |
-| https://dog.ceo/api/breeds/image/random | message: a string containing a random dog image URL. status: request status. | The app uses this when the animal’s breed is blank, is not in the breed list, or the breed list cannot be loaded, so a dog image is still shown. |
-
-### 5.2 API 2: TheCatAPI (https://thecatapi.com/)
-
-TheCatAPI provides cat images with breed information. It supports API-key authentication but also works without a key at a low rate limit. When configured, the key is read from the CAT_API_KEY environment variable or the cat.api.key system property and sent in the x-api-key header.
-
-**Table 5. TheCatAPI Integration**
-
-| **Endpoint (HTTP GET)** | **JSON Response Shape** | **Parsing and Use in PawTrack** |
-| --- | --- | --- |
-| https://api.thecatapi.com/v1/images/search?limit=1&has_breeds=1 | A JSON array with one object containing the image id, url, width, height, and a breeds array. | The app parses the array with org.json, extracts the image url, and stores it in a PetImageResult. The image is a random cat image, not matched to the animal’s breed. The caption below the image shows the provider and the animal’s own recorded breed. |
-
-### 5.3 Error Handling
-
-PawTrack keeps working when an external API is unavailable. The image requests run in the background (see Section 6), and the GUI handles these cases:
-
-- Slow or unreachable service: connection and read timeouts stop the request from waiting forever.
-
-- Unsuccessful HTTP response: a status outside 200 to 299 is reported as an error that includes the status code.
-
-- Invalid or missing JSON data: a response that cannot be parsed, or that has no image URL, is reported as an error.
-
-- Image not available: the panel shows “Image unavailable”, the status bar says the fetch failed, and the problem is written to the Activity Log.
-
-- Missing breed: the Dog CEO service falls back to a general random dog image.
-
-A failed request never stops the rest of the application. Recording interest, marking animals adopted, importing history, filtering, undoing status changes, and viewing analytics all use the local SQLite database and do not depend on either API.
-
-### 5.4 Example JSON Responses
-
-- **Dog CEO API, `/breeds/list/all`**: each breed maps to a list of its sub-breeds.
-
-```json
-{
-  "message": {
-    "labrador": [],
-    "retriever": ["chesapeake", "curly", "flatcoated", "golden"]
-  },
-  "status": "success"
-}
-```
-
-- **Dog CEO API, `/breed/{path}/images/random` and `/breeds/image/random`**: both return one image URL in `message`.
-
-```json
-{
-  "message": "https://images.dog.ceo/breeds/retriever-golden/n02099601_1024.jpg",
-  "status": "success"
-}
-```
-
-- **TheCatAPI, `/images/search?limit=1&has_breeds=1`**: an array with one image object.
-
-```json
-[
-  {
-    "id": "aXYvRd7Do",
-    "url": "https://cdn2.thecatapi.com/images/aXYvRd7Do.jpg",
-    "width": 1445,
-    "height": 1080,
-    "breeds": [
-      { "id": "abys", "name": "Abyssinian" }
-    ]
-  }
-]
-```
-## 6. Concurrency Design
-
-PawTrack uses Java Swing’s SwingWorker to run long operations on background threads, so the Event Dispatch Thread (EDT), which handles clicks and repainting, never blocks.
-
-### 6.1 Background Operations
-
-*Table 6. Background Operations and Threading Approach*
-
-| *Operation* | *Background Worker* | *Threading Approach* |
-| --- | --- | --- |
-| Bulk CSV Import | ImportWorker | SwingWorker<CsvImportResult, Void>. doInBackground() calls CsvImportService.importFile(), which reads and validates each row and saves the animals, adopters, and adoption records to SQLite. It reports progress with setProgress(). |
-| Pet Image Retrieval | ImageWorker | SwingWorker<ImageWorker.Result, Void>. doInBackground() asks the PetImageService for an image URL, downloads the image bytes, and scales the image. It returns the image and its provider information. |
-
-### 6.2 How the Background Work Runs
-
-The import is the longest operation. ImportWorker runs it in doInBackground() and publishes a percentage (0 to 100) through the standard progress property. The image worker makes two network calls, one for the image URL and one for the image itself. Neither runs on the EDT.
-
-### 6.3 Keeping the UI Responsive
-
-Swing components may only be changed on the EDT. SwingWorker delivers its progress and state change events on the EDT, so the GUI listens for them:
-
-- While the import runs: the progress event moves the progress bar and its text, and the status bar says the import is running.
-
-- When a worker is finished: the state changes to DONE and the GUI calls get() to read the result. For an import, it shows the summary in the status bar and Activity Log, then refreshes the animal table and the analytics. For an image, it shows the picture and provider.
-
-- If a worker fails: the GUI shows an error message or “Image unavailable” and the application continues.
-
-Because the long work is off the EDT, the window keeps repainting and accepting clicks during an import or an image download, so it never freezes.
-
-## 7. Data Mining & Visualization Design
-
-PawTrack uses the AnalyticsService class to analyze animal and adoption records stored in the SQLite database. It performs frequency analysis to identify the most adopted species and breeds, calculates average shelter stay durations, and aggregates adoption counts across the animal classification hierarchy. The results are organized into an AnalyticsReport and displayed through the application's analytics dashboard.
-
-### 7.1 Data Mining and Aggregation
-
-The application analyzes completed adoption records by matching each adoption record with its corresponding animal. It groups and counts the records according to species and breed, calculates shelter stay durations, and performs recursive aggregation through the classification tree.
-
-**Table 7. Data Mining and Aggregation Operations**
-
-| **Analysis** | **Aggregation Method** | **Purpose** |
-| --- | --- | --- |
-| Adoptions by Species | Counts completed adoptions for each species and sorts the results from highest to lowest frequency. | Identifies the species with the highest number of adoptions. |
-| Adoptions by Breed | Counts completed adoptions for each recorded breed and ranks them by frequency. | Identifies the most adopted breeds. |
-| Average Shelter Stay | Calculates the days between an animal's intake and adoption dates, then computes the overall and per-species averages. | Determines how long animals typically stay in the shelter before adoption. |
-| Adoptions by Classification | Uses recursive traversal to count adopted animals under each classification node, including all its descendant nodes. | Provides adoption totals across the animal classification hierarchy. |
-
-The analysis reads the live animal and adoption records from the SQLite database each time it runs. The analytics are refreshed after interest is recorded, an animal is adopted, or a CSV file is imported, and whenever Refresh Analytics is clicked, so the results and charts change whenever the underlying data changes.
-
-### 7.2 Recursive Classification Analysis
-
-PawTrack uses the ClassificationService and ClassificationNode classes to organize animal species and breeds into a hierarchical tree structure. The hierarchy allows classifications to have multiple levels without a fixed depth.
-
-For example:
-
-**Dog > Sporting Group > Retriever > Golden Retriever**
-
-The application uses recursive methods to search for classifications by name or full path, retrieve classification paths, and traverse the hierarchy. During analytics processing, the AnalyticsService uses recursive aggregation to calculate the total number of adopted animals within each classification, including its descendants. This allows staff to analyze adoption patterns at different levels of the classification hierarchy rather than relying only on individual species or breed names.
-
-### 7.3 Data Visualization
-
-PawTrack uses a bar chart, drawn by the BarChartPanel class, to show the aggregated results. A bar chart compares numbers across categories such as species, breeds, and classifications. The AnalyticsPanel provides a metric dropdown and a **Refresh Analytics** button.
-
-**Table 8. Analytics Dashboard Visualizations**
-
-| **Chart** | **Data Displayed** | **Purpose** |
-| --- | --- | --- |
-| Adoptions by Species | Completed adoptions per species | Compare adoption frequency |
-| Top Adopted Breeds (Top 8) | The eight breeds with the most adoptions | Highlight the most adopted breeds |
-| Average Shelter Stay (days) by Species | Average shelter days per species | Compare stay length |
-| Adoptions by Classification (recursive) | Adoptions per classification, including descendants | Show adoption spread across the hierarchy |
-
-The dashboard also shows a text summary: total animals, completed adoptions, most adopted species and breed, average shelter stay, and adopters on waitlists. Together, these results help staff spot adoption patterns and monitor shelter stay durations.
-
-
-
