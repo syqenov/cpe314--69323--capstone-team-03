@@ -1,10 +1,10 @@
 package pawtrack.service;
 
-import pawtrack.db.AdopterDao;
-import pawtrack.db.AdoptionRecordDao;
-import pawtrack.db.AnimalDao;
-import pawtrack.db.ClassificationDao;
-import pawtrack.db.Database;
+import pawtrack.dao.AdopterDao;
+import pawtrack.dao.AdoptionRecordDao;
+import pawtrack.dao.AnimalDao;
+import pawtrack.dao.ClassificationDao;
+import pawtrack.dao.Database;
 import pawtrack.model.Adopter;
 import pawtrack.model.AdoptionRecord;
 import pawtrack.model.Animal;
@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-
 
 /**
  * Bulk importer for the historical intake/adoption CSV log.
