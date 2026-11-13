@@ -433,6 +433,34 @@ public final class MainFrame extends JFrame {
         }
         toolbar.add(button("Fetch Sample Pet Image", this::onFetchImage, "Fetch a sample image for the selected animal"));
         toolbar.add(Box.createVerticalStrut(16));
+
+        // Quick search filter
+        javax.swing.JTextField searchField = new javax.swing.JTextField();
+        searchField.setAlignmentX(Component.CENTER_ALIGNMENT);
+        searchField.setPreferredSize(new Dimension(240, 36));
+        searchField.setMinimumSize(new Dimension(240, 36));
+        searchField.setMaximumSize(new Dimension(240, 36));
+        searchField.setFont(BODY_FONT);
+        searchField.setBorder(new RoundedUi.RoundedBorder(18, BORDER_BLUE, 1));
+        searchField.putClientProperty("JTextField.placeholderText", "Search animals...");
+        searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { filterTable(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { filterTable(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { filterTable(); }
+            private void filterTable() {
+                String text = searchField.getText().trim().toLowerCase();
+                javax.swing.table.TableRowSorter<javax.swing.table.TableModel> sorter =
+                        (javax.swing.table.TableRowSorter<javax.swing.table.TableModel>) animalTable.getRowSorter();
+                if (text.isEmpty()) {
+                    sorter.setRowFilter(null);
+                } else {
+                    sorter.setRowFilter(javax.swing.RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(text)));
+                }
+            }
+        });
+        toolbar.add(searchField);
+        toolbar.add(Box.createVerticalStrut(16));
+
         classificationFilter.setPrototypeDisplayValue("Dog > Sporting Group > Retriever");
         classificationFilter.setAlignmentX(Component.CENTER_ALIGNMENT);
         classificationFilter.setPreferredSize(new Dimension(240, 40));
