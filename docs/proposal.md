@@ -20,7 +20,7 @@
 
 ## 1. One paragraph Pitch 
 
-PawTrack (Pet Shelter & Adoption Tracker) is a Java-based desktop application designed to streamline animal shelter operations by providing an organized system for managing animal records, adopter information, adoption waitlists, and adoption activities. It enables shelter staff to maintain animal records, manage adoption interests, track adoption progress, import animal data through CSV files, and generate analytics to support shelter operations and decision-making. The system uses object-oriented programming principles, data structures, Java Swing, SQLite, and JDBC to provide its core functionalities, with ADMIN and USER roles for shelter-side access. It also integrates external APIs to retrieve sample dog and cat images, requiring an internet connection only for image retrieval while core operations remain locally accessible through the SQLite database.
+PawTrack (Pet Shelter & Adoption Tracker) is a Java-based desktop application designed to streamline animal shelter operations by providing an organized system for managing animal records, adopter information, adoption waitlists, and adoption activities. It enables shelter staff to maintain animal records, manage adoption interests, track adoption progress, import animal data through CSV files, and generate analytics to support shelter operations and decision-making. The system uses object-oriented programming principles, data structures, Java Swing, SQLite, and JDBC to provide its core functionalities, with STAFF and ADOPTER roles for secure access. It also integrates external APIs to retrieve sample dog and cat images, requiring an internet connection only for image retrieval while core operations remain locally accessible through the SQLite database.
 
 <br> 
 
@@ -35,6 +35,7 @@ PawTrack (Pet Shelter & Adoption Tracker) is a Java-based desktop application de
 | Adopter | id (PK), name, email (unique), phone |
 | AdoptionRecord | id (PK), animal_id (FK → Animal.id), adopter_id (FK → Adopter.id), adoption_date, fee_paid |
 | WaitlistEntry | id (PK), animal_id (FK → Animal.id), adopter_id (FK → Adopter.id), requested_at, position |
+| User | id (PK), username (unique), password_hash, role, adopter_id (FK → Adopter.id, nullable) |
 
 ### Entity Relationships
 
@@ -46,7 +47,7 @@ PawTrack (Pet Shelter & Adoption Tracker) is a Java-based desktop application de
 | Adopter | 1:M | AdoptionRecord | adopter_id | An adopter can adopt multiple animals. |
 | Animal | 1:M | WaitlistEntry | animal_id | An animal can have multiple adopters on its waitlist. |
 | Adopter | 1:M | WaitlistEntry | adopter_id | An adopter can be on the waitlists of multiple animals. |
-
+| Adopter	| 1:1	| User | adopter_id (nullable) |	An adopter profile can be linked to a specific user account so they can log in and view their personal waitlist and adoption history. |
 <br>
 
 ## 3. Feature Checklist
@@ -64,7 +65,7 @@ PawTrack (Pet Shelter & Adoption Tracker) is a Java-based desktop application de
 | Import historical intake/adoption CSV files on a background thread using SwingWorker | **Concurrency:** Performs CSV imports in the background so the application remains responsive during data processing. |
 | Analyze most-adopted breed/species and average shelter stay length | **Data Mining:** Performs data aggregation and frequency analysis to generate useful shelter statistics. |
 | Bar chart of the analytics results, with labeled axes and title | **Data Visualization:** Displays analytics results through a properly labeled bar chart. |
-| Login authentication with ADMIN and USER roles | **Authentication / Access Control:** Provides shelter-side login and role-based access to application features according to assigned permissions. |
+| Login authentication with STAFF and ADOPTER roles | **Authentication / Access Control:** Provides secure login, password hashing, and role-based access control to application features according to assigned permissions. |
 ## 4. Task Split 
 | Member | Primary Responsibility (this milestone) |
 | --- | --- |
