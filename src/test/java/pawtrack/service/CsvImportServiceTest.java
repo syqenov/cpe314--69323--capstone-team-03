@@ -1,7 +1,7 @@
 package pawtrack.service;
 
-import pawtrack.db.AnimalDao;
-import pawtrack.db.Database;
+import pawtrack.dao.AnimalDao;
+import pawtrack.dao.Database;
 import pawtrack.model.Animal;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
