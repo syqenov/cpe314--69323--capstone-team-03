@@ -35,8 +35,10 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
+import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -533,6 +535,17 @@ public final class MainFrame extends JFrame {
         themeButton.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
         themeButton.addActionListener(e -> toggleTheme());
         toolbar.add(themeButton);
+
+        // Column visibility toggle
+        RoundedUi.RoundedButton columnsButton = new RoundedUi.RoundedButton("Columns", 18, new Color(0x5D8AA8))
+                .setTooltip("Toggle column visibility");
+        columnsButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        columnsButton.setPreferredSize(new Dimension(120, 36));
+        columnsButton.setMinimumSize(new Dimension(100, 36));
+        columnsButton.setMaximumSize(new Dimension(140, 36));
+        columnsButton.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        columnsButton.addActionListener(e -> showColumnVisibilityDialog());
+        toolbar.add(columnsButton);
 
         progressBar.setAlignmentX(Component.CENTER_ALIGNMENT);
         toolbar.add(progressBar);
@@ -1786,5 +1799,45 @@ public final class MainFrame extends JFrame {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
         return value;
+    }
+
+    // Private helper for MainFrame GUI logic
+    private void showColumnVisibilityDialog() {
+        JDialog dialog = new JDialog(this, "Column Visibility", true);
+        dialog.setLayout(new BorderLayout());
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+
+        String[] columnNames = {"ID", "Name", "Species", "Breed", "Age", "Gender", "Status", "Fee", "Classification", "Intake"};
+        for (int i = 0; i < columnNames.length && i < animalTable.getColumnCount(); i++) {
+            JCheckBox check = new JCheckBox(columnNames[i]);
+            check.setSelected(animalTable.getColumnModel().getColumn(i).getWidth() > 0);
+            final int colIdx = i;
+            check.addActionListener(e -> {
+                javax.swing.table.TableColumn column = animalTable.getColumnModel().getColumn(colIdx);
+                column.setMinWidth(check.isSelected() ? 50 : 0);
+                column.setMaxWidth(check.isSelected() ? Integer.MAX_VALUE : 0);
+                column.setWidth(check.isSelected() ? 100 : 0);
+                column.setPreferredWidth(check.isSelected() ? 100 : 0);
+            });
+            panel.add(check);
+        }
+
+        JScrollPane scroll = new JScrollPane(panel);
+        scroll.setPreferredSize(new Dimension(220, 300));
+        dialog.add(scroll, BorderLayout.CENTER);
+
+        JButton closeBtn = new JButton("Close");
+        closeBtn.addActionListener(e -> dialog.dispose());
+        JPanel btnPanel = new JPanel();
+        btnPanel.add(closeBtn);
+        dialog.add(btnPanel, BorderLayout.SOUTH);
+
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
     }
 }
