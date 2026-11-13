@@ -609,6 +609,33 @@ public final class MainFrame extends JFrame {
         styleScrollBar(scroll.getVerticalScrollBar());
         styleScrollBar(scroll.getHorizontalScrollBar());
         panel.add(scroll, BorderLayout.CENTER);
+
+        // Context menu for animal table
+        JPopupMenu contextMenu = new JPopupMenu();
+        JMenuItem recordInterestItem = new JMenuItem("Record Interest");
+        recordInterestItem.addActionListener(e -> onRecordInterest());
+        contextMenu.add(recordInterestItem);
+
+        JMenuItem markAdoptedItem = new JMenuItem("Mark Adopted");
+        markAdoptedItem.addActionListener(e -> onMarkAdopted());
+        contextMenu.add(markAdoptedItem);
+
+        JMenuItem undoItem = new JMenuItem("Undo Last Status Change");
+        undoItem.addActionListener(e -> onUndo());
+        contextMenu.add(undoItem);
+
+        JMenuItem fetchImageItem = new JMenuItem("Fetch Sample Image");
+        fetchImageItem.addActionListener(e -> onFetchImage());
+        contextMenu.add(fetchImageItem);
+
+        contextMenu.addSeparator();
+
+        JMenuItem refreshItem = new JMenuItem("Refresh");
+        refreshItem.addActionListener(e -> onRefreshAnimals());
+        contextMenu.add(refreshItem);
+
+        animalTable.setComponentPopupMenu(contextMenu);
+
         return panel;
     }
 
