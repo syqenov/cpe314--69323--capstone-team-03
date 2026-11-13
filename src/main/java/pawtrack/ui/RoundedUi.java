@@ -196,6 +196,7 @@ public final class RoundedUi {
         private float fromScale = 1.0f;
         private float targetScale = 1.0f;
         private long animStart = 0L;
+        private String tooltipText;
 
         public RoundedButton(String text, int radius, Color baseColor) {
             super(text);
@@ -244,10 +245,19 @@ public final class RoundedUi {
             addMouseListener(listener);
         }
 
-        /** Changes the fill color (used for the selected tab state). */
+        /** Sets the fill color (used for the selected tab state). */
         public void setBaseColor(Color color) {
             this.baseColor = color;
             repaint();
+        }
+
+        /** Sets a tooltip that appears after a short delay. */
+        public RoundedButton setTooltip(String text) {
+            this.tooltipText = text;
+            if (text != null && !text.isEmpty()) {
+                setToolTipText(text);
+            }
+            return this;
         }
 
         private void animateTo(float target) {

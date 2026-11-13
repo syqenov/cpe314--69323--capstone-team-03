@@ -381,29 +381,29 @@ public final class MainFrame extends JFrame {
         toolbar.add(logoutButton);
         toolbar.add(Box.createVerticalStrut(16));
 
-        toolbar.add(button("List / Refresh Animals", this::onRefreshAnimals));
+        toolbar.add(button("List / Refresh Animals", this::onRefreshAnimals, "Refresh the animal list (Ctrl+R)"));
         toolbar.add(Box.createVerticalStrut(16));
-        toolbar.add(button("Filter by Classification", this::onFilterByClassification));
-        toolbar.add(Box.createVerticalStrut(16));
-        if (user.getRole() == Role.STAFF) {
-            toolbar.add(button("Import Intake History (CSV)", this::onImportCsv));
-            toolbar.add(Box.createVerticalStrut(16));
-            toolbar.add(button("Add Animal", this::onAddAnimal));
-            toolbar.add(Box.createVerticalStrut(16));
-            toolbar.add(button("Edit Animal", this::onEditAnimal));
-            toolbar.add(Box.createVerticalStrut(16));
-            toolbar.add(button("Delete Animal", this::onDeleteAnimal));
-            toolbar.add(Box.createVerticalStrut(16));
-        }
-        toolbar.add(button("Record Interest", this::onRecordInterest));
+        toolbar.add(button("Filter by Classification", this::onFilterByClassification, "Focus the classification filter (Ctrl+F)"));
         toolbar.add(Box.createVerticalStrut(16));
         if (user.getRole() == Role.STAFF) {
-            toolbar.add(button("Mark Adopted", this::onMarkAdopted));
+            toolbar.add(button("Import Intake History (CSV)", this::onImportCsv, "Import animals from CSV file (Ctrl+I)"));
             toolbar.add(Box.createVerticalStrut(16));
-            toolbar.add(button("Undo Last Status Change", this::onUndo));
+            toolbar.add(button("Add Animal", this::onAddAnimal, "Add a new animal to the shelter"));
+            toolbar.add(Box.createVerticalStrut(16));
+            toolbar.add(button("Edit Animal", this::onEditAnimal, "Edit the selected animal"));
+            toolbar.add(Box.createVerticalStrut(16));
+            toolbar.add(button("Delete Animal", this::onDeleteAnimal, "Delete the selected animal"));
             toolbar.add(Box.createVerticalStrut(16));
         }
-        toolbar.add(button("Fetch Sample Pet Image", this::onFetchImage));
+        toolbar.add(button("Record Interest", this::onRecordInterest, "Record adoption interest for selected animal"));
+        toolbar.add(Box.createVerticalStrut(16));
+        if (user.getRole() == Role.STAFF) {
+            toolbar.add(button("Mark Adopted", this::onMarkAdopted, "Mark the selected animal as adopted"));
+            toolbar.add(Box.createVerticalStrut(16));
+            toolbar.add(button("Undo Last Status Change", this::onUndo, "Undo the last status change (Ctrl+U)"));
+            toolbar.add(Box.createVerticalStrut(16));
+        }
+        toolbar.add(button("Fetch Sample Pet Image", this::onFetchImage, "Fetch a sample image for the selected animal"));
         toolbar.add(Box.createVerticalStrut(16));
         classificationFilter.setPrototypeDisplayValue("Dog > Sporting Group > Retriever");
         classificationFilter.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -740,6 +740,19 @@ public final class MainFrame extends JFrame {
     // Private helper for MainFrame GUI logic
     private JButton button(String text, Runnable action) {
         RoundedUi.RoundedButton button = new RoundedUi.RoundedButton(text, 18, PRIMARY_BLUE);
+        button.setAlignmentX(Component.CENTER_ALIGNMENT);
+        button.setPreferredSize(new Dimension(250, 44));
+        button.setMinimumSize(new Dimension(225, 44));
+        button.setMaximumSize(new Dimension(270, 44));
+        button.setFont(BODY_FONT);
+        button.addActionListener(event -> action.run());
+        return button;
+    }
+
+    /** Creates a toolbar button with a tooltip. */
+    private JButton button(String text, Runnable action, String tooltip) {
+        RoundedUi.RoundedButton button = new RoundedUi.RoundedButton(text, 18, PRIMARY_BLUE)
+                .setTooltip(tooltip);
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
         button.setPreferredSize(new Dimension(250, 44));
         button.setMinimumSize(new Dimension(225, 44));
