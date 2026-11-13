@@ -147,6 +147,8 @@ public final class MainFrame extends JFrame {
     private final RoundedUi.LoadingSpinner spinner = new RoundedUi.LoadingSpinner();
     // Private helper for MainFrame GUI logic
     private boolean rowStripingEnabled = true;
+    // Private helper for MainFrame GUI logic
+    private final JLabel connectionStatusLabel = new JLabel("● Connected");
 
     public MainFrame(User user, Database database) throws SQLException {
         super("Pet Shelter & Adoption Tracker");
@@ -247,7 +249,7 @@ public final class MainFrame extends JFrame {
         }
 
         add(buildImagePanel(), BorderLayout.EAST);
-        add(statusLabel, BorderLayout.SOUTH);
+        add(buildStatusBar(), BorderLayout.SOUTH);
 
         progressBar.setStringPainted(true);
         progressBar.setString("");
@@ -776,6 +778,41 @@ public final class MainFrame extends JFrame {
             imagePanel.add(logoLabel);
         }
         return imagePanel;
+    }
+
+    // Private helper for MainFrame GUI logic
+    private JPanel buildStatusBar() {
+        JPanel statusBar = new JPanel(new BorderLayout());
+        statusBar.setBackground(PANEL_BLUE);
+        statusBar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER_BLUE),
+                BorderFactory.createEmptyBorder(4, 12, 4, 12)));
+
+        statusLabel.setForeground(NAVY_BLUE);
+        statusLabel.setFont(BODY_FONT);
+        statusBar.add(statusLabel, BorderLayout.WEST);
+
+        connectionStatusLabel.setForeground(new Color(0x27AE60));
+        connectionStatusLabel.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+        statusBar.add(connectionStatusLabel, BorderLayout.EAST);
+
+        // Start connection monitoring timer
+        javax.swing.Timer connectionTimer = new javax.swing.Timer(30000, e -> checkConnection());
+        connectionTimer.start();
+        checkConnection(); // Initial check
+
+        return statusBar;
+    }
+
+    private void checkConnection() {
+        try {
+            database.getConnection().isValid(2);
+            connectionStatusLabel.setText("● Connected");
+            connectionStatusLabel.setForeground(new Color(0x27AE60));
+        } catch (Exception e) {
+            connectionStatusLabel.setText("● Disconnected");
+            connectionStatusLabel.setForeground(new Color(0xE74C3C));
+        }
     }
 
     /** Displays the identity and role of the account that completed login. */
