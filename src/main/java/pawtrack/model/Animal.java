@@ -5,14 +5,9 @@ import java.util.Objects;
 
 /**
  * Abstract base of the animal hierarchy.
- *
- * <p>Every concrete species must define its own <em>adoption fee</em> and
- * <em>care schedule</em> rules, which is the core reason this class is abstract
- * rather than a single "god" class with a switch.</p>
  */
 public abstract class Animal {
 
-    /** Animals younger than this are treated as juveniles (puppy / kitten / etc.). */
     public static final int JUVENILE_MAX_MONTHS = 6;
 
     private int id;
@@ -20,11 +15,13 @@ public abstract class Animal {
     private final String breed;
     private final int ageMonths;
     private final LocalDate intakeDate;
+    private final String source; // e.g., "stray", "surrender"
+    private final LocalDate createdAt;
     private AnimalStatus status;
     private Integer classificationId;
 
     protected Animal(int id, String name, String breed, int ageMonths,
-                     LocalDate intakeDate, AnimalStatus status) {
+                     LocalDate intakeDate, String source, LocalDate createdAt, AnimalStatus status) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Animal name must not be blank");
         }
@@ -42,29 +39,28 @@ public abstract class Animal {
         this.breed = breed.trim();
         this.ageMonths = ageMonths;
         this.intakeDate = intakeDate;
+        this.source = (source == null || source.isBlank()) ? "stray" : source.trim().toLowerCase();
+        this.createdAt = createdAt == null ? LocalDate.now() : createdAt;
         this.status = status == null ? AnimalStatus.INTAKE : status;
     }
 
-    /** @return the species this concrete animal belongs to. */
+    protected Animal(int id, String name, String breed, int ageMonths,
+                     LocalDate intakeDate, AnimalStatus status) {
+        this(id, name, breed, ageMonths, intakeDate, "stray", LocalDate.now(), status);
+    }
+
     public abstract Species species();
 
-    /** @return the adoption fee (in dollars) following this species' pricing rules. */
     public abstract double adoptionFee();
 
-    /** @return a human readable care schedule for this species. */
     public abstract String careSchedule();
 
-    /** @return true when the animal is past this species' senior threshold. */
     public abstract boolean isSenior();
 
     public boolean isJuvenile() {
         return ageMonths < JUVENILE_MAX_MONTHS;
     }
 
-    /**
-     * Factory used when reconstructing animals from a database row or CSV log,
-     * so callers never need to know which concrete subclass to build.
-     */
     public static Animal create(Species species, int id, String name, String breed,
                                 int ageMonths, LocalDate intakeDate, AnimalStatus status) {
         Species resolved = species == null ? Species.CAT : species;
@@ -76,7 +72,6 @@ public abstract class Animal {
         }
     }
 
-    /** Assigns the database generated key exactly once. */
     public void assignId(int generatedId) {
         if (this.id == 0 && generatedId > 0) {
             this.id = generatedId;
@@ -103,6 +98,14 @@ public abstract class Animal {
         return intakeDate;
     }
 
+    public String getSource() {
+        return source;
+    }
+
+    public LocalDate getCreatedAt() {
+        return createdAt;
+    }
+
     public AnimalStatus getStatus() {
         return status;
     }
@@ -121,8 +124,8 @@ public abstract class Animal {
 
     @Override
     public String toString() {
-        return String.format("#%d %s (%s, %s, %d mo) [%s]",
-                id, name, species().label(), breed, ageMonths, status.label());
+        return String.format("#%d %s (%s, %s, %d mo) [%s - %s]",
+                id, name, species().label(), breed, ageMonths, source, status.label());
     }
 
     @Override
