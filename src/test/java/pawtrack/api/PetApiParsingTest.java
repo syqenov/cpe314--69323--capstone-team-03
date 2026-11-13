@@ -1,4 +1,5 @@
 package pawtrack.api;
+
 import pawtrack.model.Species;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -84,4 +85,3 @@ class PetApiParsingTest {
         assertEquals("Bengal", breeds.get("beng"));
     }
 }
-
