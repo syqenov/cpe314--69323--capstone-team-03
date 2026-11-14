@@ -1,11 +1,17 @@
+
 package pawtrack.ui;
 
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 import pawtrack.model.Animal;
 import pawtrack.model.AnimalStatus;
 import pawtrack.model.Species;
 import pawtrack.service.WaitlistService;
+
+import java.time.LocalDate;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class AnimalTableModelTest {
@@ -26,15 +32,25 @@ class AnimalTableModelTest {
 
     @Test
     void testSetAnimals() {
-        var animal = Animal.create(Species.DOG, 1, "Buddy", "Labrador", 12, java.time.LocalDate.now(), AnimalStatus.AVAILABLE);
-        model.setAnimals(java.util.List.of(animal));
+        Animal animal = Animal.create(
+                Species.DOG,
+                1,
+                "Buddy",
+                "Labrador",
+                12,
+                LocalDate.now(),
+                AnimalStatus.AVAILABLE
+        );
+
+        model.setAnimals(List.of(animal));
+
         assertEquals(1, model.getRowCount());
         assertEquals("Buddy", model.getValueAt(0, 1));
     }
 
     @Test
     void testGetColumnCount() {
-        assertEquals(7, model.getColumnCount());
+        assertEquals(9, model.getColumnCount());
     }
 
     @Test
@@ -43,16 +59,79 @@ class AnimalTableModelTest {
         assertEquals("Name", model.getColumnName(1));
         assertEquals("Species", model.getColumnName(2));
         assertEquals("Breed", model.getColumnName(3));
-        assertEquals("Status", model.getColumnName(4));
-        assertEquals("Classification", model.getColumnName(5));
-        assertEquals("Waitlist", model.getColumnName(6));
+        assertEquals("Age (mo)", model.getColumnName(4));
+        assertEquals("Intake Date", model.getColumnName(5));
+        assertEquals("Status", model.getColumnName(6));
+        assertEquals("Fee ($)", model.getColumnName(7));
+        assertEquals("Waitlist", model.getColumnName(8));
     }
 
     @Test
     void testWaitlistColumnShowsCount() {
-        var animal = Animal.create(Species.CAT, 1, "Whiskers", "Siamese", 12, java.time.LocalDate.now(), AnimalStatus.AVAILABLE);
-        waitlist.addInterest(1, new pawtrack.model.Adopter("John", "john@test.com", "555-1234"));
-        model.setAnimals(java.util.List.of(animal));
-        assertEquals("1", model.getValueAt(0, 6));
+        Animal animal = Animal.create(
+                Species.CAT,
+                1,
+                "Whiskers",
+                "Siamese",
+                12,
+                LocalDate.now(),
+                AnimalStatus.AVAILABLE
+        );
+
+        waitlist.addInterest(
+                1,
+                new pawtrack.model.Adopter(
+                        "John",
+                        "john@test.com",
+                        "555-1234"
+                )
+        );
+
+        model.setAnimals(List.of(animal));
+
+        assertEquals(1, model.getValueAt(0, 8));
+    }
+
+    @Test
+    void testGetAnimalAtReturnsAnimal() {
+        Animal animal = Animal.create(
+                Species.DOG,
+                1,
+                "Buddy",
+                "Labrador",
+                12,
+                LocalDate.now(),
+                AnimalStatus.AVAILABLE
+        );
+
+        model.setAnimals(List.of(animal));
+
+        assertSame(animal, model.getAnimalAt(0));
+    }
+
+    @Test
+    void testGetAnimalAtInvalidIndexReturnsNull() {
+        assertNull(model.getAnimalAt(0));
+        assertNull(model.getAnimalAt(-1));
+    }
+
+    @Test
+    void testGetAnimalsReturnsCopy() {
+        Animal animal = Animal.create(
+                Species.DOG,
+                1,
+                "Buddy",
+                "Labrador",
+                12,
+                LocalDate.now(),
+                AnimalStatus.AVAILABLE
+        );
+
+        model.setAnimals(List.of(animal));
+
+        List<Animal> result = model.getAnimals();
+        result.clear();
+
+        assertEquals(1, model.getRowCount());
     }
 }
