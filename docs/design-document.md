@@ -184,7 +184,7 @@ This follows the Single Responsibility Principle. Animal models shared animal da
 
 ### 4.1 ER Diagram
  
-![Finalized ERD](./er-diagram.png)
+![Finalized ERD](./er-diagram.jpg)
  
 *Figure 4.1 Finalized ERD. PK = primary key, FK = foreign key, NN = NOT NULL*
 
@@ -247,47 +247,51 @@ CREATE TABLE IF NOT EXISTS waitlist_entry (
 );
 ```
 
-5. API Integration Design
+## 5. API Integration Design
 
-PawTrack uses two public REST APIs to retrieve sample pet images: Dog CEO for dogs and TheCatAPI for cats. Both follow the PetImageService interface, and PetImageServiceFactory selects the service from the animal's species. Every call goes through HttpJson, which sends an HTTP GET with an 8-second connect timeout and an 8-second read timeout. The JSON is parsed with Gson into small DTO records (DogCeoResponse, CatImageDto), and the Dog CEO breed catalogue is read with org.json. The service returns a PetImageResult (image URL, species, breed, provider). ImageWorker then downloads the image bytes and the Sample Pet Image panel shows the picture with the provider and the animal's recorded breed.
+PawTrack uses two public REST APIs to retrieve sample pet images: Dog CEO for dogs and TheCatAPI for cats. Both follow the `PetImageService` interface, and `PetImageServiceFactory` selects the service from the animal's species. Every call goes through `HttpJson`, which sends an HTTP GET with an 8-second connect timeout and an 8-second read timeout. The JSON is parsed with Gson into small DTO records (`DogCeoResponse`, `CatImageDto`), and the Dog CEO breed catalogue is read with org.json. The service returns a `PetImageResult` (image URL, species, breed, provider). `ImageWorker` then downloads the image bytes and the Sample Pet Image panel shows the picture with the provider and the animal's recorded breed.
 
-5.1 API 1: Dog CEO API (https://dog.ceo/dog-api/)
+### 5.1 API 1: Dog CEO API (https://dog.ceo/dog-api/)
 
 The Dog CEO API provides dog images and a catalogue of breeds. It needs no API key.
 
-Table 11: Dog CEO API integration
+**Table 11: Dog CEO API integration**
 
-Endpoint (HTTP GET)	JSON response shape	Parsing and use in PawTrack
-https://dog.ceo/api/breeds/list/all	message: object mapping each breed to a list of sub-breeds; status.	Read with org.json and flattened recursively into breed entries, e.g. retriever + golden becomes "Golden Retriever". Used to find the API path matching the animal's recorded breed.
-https://dog.ceo/api/breed/{path}/images/random	message: one image URL string; status.	Parsed into DogCeoResponse; the URL is stored in a PetImageResult. For example, retriever/golden returns a Golden Retriever image.
-https://dog.ceo/api/breeds/image/random	message: a random dog image URL; status.	Used when the animal's breed is blank, so an image is still shown. If the breed is not in the catalogue (or the catalogue cannot be loaded), the service guesses a path from the last word of the breed name instead.
-5.2 API 2: TheCatAPI (https://thecatapi.com/)
+| Endpoint (HTTP GET) | JSON response shape | Parsing and use in PawTrack |
+|---|---|---|
+| `https://dog.ceo/api/breeds/list/all` | `message`: object mapping each breed to a list of sub-breeds; `status`. | Read with org.json and flattened recursively into breed entries, e.g. retriever + golden becomes "Golden Retriever". Used to find the API path matching the animal's recorded breed. |
+| `https://dog.ceo/api/breed/{path}/images/random` | `message`: one image URL string; `status`. | Parsed into `DogCeoResponse`; the URL is stored in a `PetImageResult`. For example, `retriever/golden` returns a Golden Retriever image. |
+| `https://dog.ceo/api/breeds/image/random` | `message`: a random dog image URL; `status`. | Used when the animal's breed is blank, so an image is still shown. If the breed is not in the catalogue (or the catalogue cannot be loaded), the service guesses a path from the last word of the breed name instead. |
 
-TheCatAPI provides cat images with breed information. It supports API-key authentication and also works without a key at a low rate limit. When configured, the key is read from the cat.api.key system property or the CAT_API_KEY environment variable and sent in the x-api-key header.
+### 5.2 API 2: TheCatAPI (https://thecatapi.com/)
 
-Table 12: TheCatAPI integration
+TheCatAPI provides cat images with breed information. It supports API-key authentication and also works without a key at a low rate limit. When configured, the key is read from the `cat.api.key` system property or the `CAT_API_KEY` environment variable and sent in the `x-api-key` header.
 
-Endpoint (HTTP GET)	JSON response shape	Parsing and use in PawTrack
-https://api.thecatapi.com/v1/breeds	Array of breed objects with id and name.	Parsed into an id-to-name map and searched (ignoring case) for the animal's recorded breed.
-https://api.thecatapi.com/v1/images/search?limit=1&breed_ids={id}	Array with one object: id, url, width, height, and a breeds array.	Parsed into CatImageDto; the first image URL is stored in a PetImageResult. This returns an image of the matching breed.
-https://api.thecatapi.com/v1/images/search?limit=1&has_breeds=1	Same array shape.	Used when the breed is blank or not found, so a random cat image is shown. The caption shows the provider and the animal's own recorded breed.
-5.3 Error Handling
+**Table 12: TheCatAPI integration**
+
+| Endpoint (HTTP GET) | JSON response shape | Parsing and use in PawTrack |
+|---|---|---|
+| `https://api.thecatapi.com/v1/breeds` | Array of breed objects with `id` and `name`. | Parsed into an id-to-name map and searched (ignoring case) for the animal's recorded breed. |
+| `https://api.thecatapi.com/v1/images/search?limit=1&breed_ids={id}` | Array with one object: `id`, `url`, `width`, `height`, and a `breeds` array. | Parsed into `CatImageDto`; the first image URL is stored in a `PetImageResult`. This returns an image of the matching breed. |
+| `https://api.thecatapi.com/v1/images/search?limit=1&has_breeds=1` | Same array shape. | Used when the breed is blank or not found, so a random cat image is shown. The caption shows the provider and the animal's own recorded breed. |
+
+### 5.3 Error Handling
 
 PawTrack keeps working when an external API is unavailable. Image requests run in the background (see Section 6), and the GUI handles these cases:
 
-Slow or unreachable service: the 8-second connect and read timeouts stop the request from waiting forever.
-Unsuccessful HTTP response: a status outside 200 to 299 is reported as an error that includes the status code.
-Invalid or missing JSON data: a response that cannot be parsed, has a non-success status, or has no image URL is reported as an error (for example, "TheCatAPI returned no image").
-Image not available: the panel shows "Image unavailable", the status bar says the fetch failed, and the problem is written to the Activity Log.
-Missing breed: the Dog CEO service falls back to a general random dog image, and TheCatAPI falls back to a random cat image.
+- **Slow or unreachable service:** the 8-second connect and read timeouts stop the request from waiting forever.
+- **Unsuccessful HTTP response:** a status outside 200 to 299 is reported as an error that includes the status code.
+- **Invalid or missing JSON data:** a response that cannot be parsed, has a non-success status, or has no image URL is reported as an error (for example, "TheCatAPI returned no image").
+- **Image not available:** the panel shows "Image unavailable", the status bar says the fetch failed, and the problem is written to the Activity Log.
+- **Missing breed:** the Dog CEO service falls back to a general random dog image, and TheCatAPI falls back to a random cat image.
 
 A failed request never stops the rest of the application. Recording interest, marking animals adopted, importing history, filtering, undoing status changes, and viewing analytics all use the local SQLite database and do not depend on either API.
 
-5.4 Example JSON Responses
+### 5.4 Example JSON Responses
 
-Dog CEO /breeds/list/all: each breed maps to a list of sub-breeds.
+Dog CEO `/breeds/list/all`: each breed maps to a list of sub-breeds.
 
-json
+```json
 {
   "message": {
     "labrador": [],
@@ -295,18 +299,20 @@ json
   },
   "status": "success"
 }
+```
 
-Dog CEO /breed/{path}/images/random and /breeds/image/random: both return one image URL in message.
+Dog CEO `/breed/{path}/images/random` and `/breeds/image/random`: both return one image URL in `message`.
 
-json
+```json
 {
   "message": "https://images.dog.ceo/breeds/retriever-golden/n02099601_1024.jpg",
   "status": "success"
 }
+```
 
-TheCatAPI /images/search?limit=1&has_breeds=1: an array with one image object.
+TheCatAPI `/images/search?limit=1&has_breeds=1`: an array with one image object.
 
-json
+```json
 [
   {
     "id": "aXYvRd7Do",
@@ -316,70 +322,82 @@ json
     "breeds": [ { "id": "abys", "name": "Abyssinian" } ]
   }
 ]
-6. Concurrency Design
+```
 
-PawTrack uses Java Swing's SwingWorker to run long operations on background threads, so the Event Dispatch Thread (EDT), which handles clicks and repainting, is not blocked.
+---
 
-6.1 Background Operations
+## 6. Concurrency Design
 
-Table 13: Background operations and threading approach
+PawTrack uses Java Swing's `SwingWorker` to run long operations on background threads, so the Event Dispatch Thread (EDT), which handles clicks and repainting, is not blocked.
 
-Operation	Background worker	Threading approach
-Bulk CSV import	SwingWorker created in ImportController.importCsv() (ImportWorker is an equivalent stand-alone class)	doInBackground() calls CsvImportService.importFile(), which reads and validates each row and saves animals, adopters, and adoption records to SQLite in one transaction (committed at the end, rolled back on failure). Progress is reported as a percentage every 250 rows. done() runs on the EDT and reads the result with get().
-Pet image retrieval	ImageWorker	SwingWorker<ImageWorker.Result, Void>. doInBackground() asks the PetImageService for an image URL, downloads the image bytes, and scales the image. The GUI listens for the worker's DONE state.
-Analytics refresh	None (runs on the EDT)	AnalyticsController.compute() reads the local SQLite data and makes one in-memory pass. It runs after data changes, when Refresh Analytics is clicked, and with F5.
+### 6.1 Background Operations
 
-Figure 4
+**Table 13: Background operations and threading approach**
 
-Figure 4: Which steps run on the EDT (blue) and which on a worker thread (orange) for CSV import and image retrieval.
+| Operation | Background worker | Threading approach |
+|---|---|---|
+| Bulk CSV import | `SwingWorker` created in `ImportController.importCsv()` (`ImportWorker` is an equivalent stand-alone class) | `doInBackground()` calls `CsvImportService.importFile()`, which reads and validates each row and saves animals, adopters, and adoption records to SQLite in one transaction (committed at the end, rolled back on failure). Progress is reported as a percentage every 250 rows. `done()` runs on the EDT and reads the result with `get()`. |
+| Pet image retrieval | `ImageWorker` | `SwingWorker<ImageWorker.Result, Void>`. `doInBackground()` asks the `PetImageService` for an image URL, downloads the image bytes, and scales the image. The GUI listens for the worker's `DONE` state. |
+| Analytics refresh | None (runs on the EDT) | `AnalyticsController.compute()` reads the local SQLite data and makes one in-memory pass. It runs after data changes, when Refresh Analytics is clicked, and with F5. |
 
-6.2 How the Background Work Runs
+![Figure 4](figure4-threading.png)
+
+*Figure 4: Which steps run on the EDT (blue) and which on a worker thread (orange) for CSV import and image retrieval.*
+
+### 6.2 How the Background Work Runs
 
 The import is the longest operation. The worker computes the percentage from the number of rows processed and the number of lines in the file, and reports it every 250 rows. The image worker makes two network calls, one for the image URL and one for the image itself, and neither runs on the EDT.
 
-6.3 Keeping the UI Responsive
-While an import runs: the status bar says the import is running on a background thread, and the progress bar shows the percentage.
-When a worker finishes: for an import, the GUI reads the result, shows the summary in the status bar and the Activity Log, then refreshes the animal table and the analytics. For an image, it shows the picture, the provider, and the breed.
-If a worker fails: the GUI shows an "Import failed" message or "Image unavailable", and the application continues.
+### 6.3 Keeping the UI Responsive
+
+- **While an import runs:** the status bar says the import is running on a background thread, and the progress bar shows the percentage.
+- **When a worker finishes:** for an import, the GUI reads the result, shows the summary in the status bar and the Activity Log, then refreshes the animal table and the analytics. For an image, it shows the picture, the provider, and the breed.
+- **If a worker fails:** the GUI shows an "Import failed" message or "Image unavailable", and the application continues.
 
 Because the long work runs off the EDT, the window keeps repainting and accepting clicks during an import or an image download.
 
-7. Data Mining & Visualization Design
+---
 
-PawTrack uses AnalyticsService to analyze the animal and adoption records stored in the SQLite database. It performs frequency analysis to find the most adopted species and breeds, calculates average shelter stay, and aggregates adoption counts through the classification hierarchy. The results are returned as an AnalyticsReport and shown on the analytics dashboard. The sample intake log in data/intake_history.csv contains 6,000 records, so the charts reflect real volumes of data.
+## 7. Data Mining & Visualization Design
 
-7.1 Data Mining and Aggregation
+PawTrack uses `AnalyticsService` to analyze the animal and adoption records stored in the SQLite database. It performs frequency analysis to find the most adopted species and breeds, calculates average shelter stay, and aggregates adoption counts through the classification hierarchy. The results are returned as an `AnalyticsReport` and shown on the analytics dashboard. The sample intake log in `data/intake_history.csv` contains 6,000 records, so the charts reflect real volumes of data.
+
+### 7.1 Data Mining and Aggregation
 
 The service matches each completed adoption record with its animal, groups and counts the records by species and breed, calculates stay durations, and performs a recursive roll-up through the classification tree.
 
-Table 14: Data mining and aggregation operations
+**Table 14: Data mining and aggregation operations**
 
-Analysis	Aggregation method	Purpose
-Adoptions by Species	Counts completed adoption records for each species and sorts from highest to lowest (name breaks ties).	Identifies the species with the most adoptions.
-Adoptions by Breed	Counts completed adoption records for each breed and ranks them by frequency.	Identifies the most adopted breeds.
-Average Shelter Stay	Calculates the days between an animal's intake date and adoption date (negative values from bad data count as 0), then computes the overall and per-species averages.	Shows how long animals usually stay before adoption.
-Adoptions by Classification	Recursively counts animals with status ADOPTED under each classification node, including all descendant nodes.	Gives adoption totals across the classification hierarchy.
+| Analysis | Aggregation method | Purpose |
+|---|---|---|
+| Adoptions by Species | Counts completed adoption records for each species and sorts from highest to lowest (name breaks ties). | Identifies the species with the most adoptions. |
+| Adoptions by Breed | Counts completed adoption records for each breed and ranks them by frequency. | Identifies the most adopted breeds. |
+| Average Shelter Stay | Calculates the days between an animal's intake date and adoption date (negative values from bad data count as 0), then computes the overall and per-species averages. | Shows how long animals usually stay before adoption. |
+| Adoptions by Classification | Recursively counts animals with status ADOPTED under each classification node, including all descendant nodes. | Gives adoption totals across the classification hierarchy. |
 
-Figure 5
+![Figure 5](figure5-data-mining-flow.png)
 
-Figure 5: Data flow from the database to the chart.
+*Figure 5: Data flow from the database to the chart.*
 
 The analysis reads the live records each time it runs. The analytics refresh after interest is recorded, an animal is adopted, a status is undone, or a CSV file is imported, and whenever Refresh Analytics is clicked, so the results and charts change whenever the underlying data changes.
 
-7.2 Recursive Classification Analysis
+### 7.2 Recursive Classification Analysis
 
-ClassificationService and ClassificationNode organize breeds into a tree stored in the classification table (each row points to its parent). The tree has no fixed depth, for example: Dog > Sporting Group > Retriever > Golden Retriever. Recursive methods search for classifications by name or by full path, build paths, and walk the tree. During analytics, AnalyticsService.adoptionCountByClassification() calls itself on each child node and adds the children's totals to the node's own count, so each node reports its own adopted animals plus all of its descendants. This lets staff compare adoption patterns at different levels of the hierarchy instead of only by species or breed name.
+`ClassificationService` and `ClassificationNode` organize breeds into a tree stored in the `classification` table (each row points to its parent). The tree has no fixed depth, for example: Dog > Sporting Group > Retriever > Golden Retriever. Recursive methods search for classifications by name or by full path, build paths, and walk the tree. During analytics, `AnalyticsService.adoptionCountByClassification()` calls itself on each child node and adds the children's totals to the node's own count, so each node reports its own adopted animals plus all of its descendants. This lets staff compare adoption patterns at different levels of the hierarchy instead of only by species or breed name.
 
-7.3 Data Visualization
+### 7.3 Data Visualization
 
-PawTrack uses a bar chart, drawn by the BarChartPanel class, because a bar chart compares a number across separate categories such as species, breeds, and classifications. Each chart has a title, a labeled category axis, a labeled value axis, and value labels on the bars. No legend is needed because each chart shows one series. AnalyticsPanel provides a metric dropdown and a Refresh Analytics button; if there is no adoption history yet, the chart says to import the CSV intake log.
+PawTrack uses a bar chart, drawn by the `BarChartPanel` class, because a bar chart compares a number across separate categories such as species, breeds, and classifications. Each chart has a title, a labeled category axis, a labeled value axis, and value labels on the bars. No legend is needed because each chart shows one series. `AnalyticsPanel` provides a metric dropdown and a Refresh Analytics button; if there is no adoption history yet, the chart says to import the CSV intake log.
 
-Table 15: Analytics dashboard visualizations
+**Table 15: Analytics dashboard visualizations**
 
-Chart (dropdown choice)	Data displayed	Axis labels	Purpose
-Adoptions by Species	Completed adoptions per species	Species / Adoptions	Compare adoption frequency
-Top Adopted Breeds (Top 8)	The eight breeds with the most adoptions	Breed / Adoptions	Highlight the most adopted breeds
-Average Shelter Stay (days) by Species	Average shelter days per species	Species / Days	Compare stay length
-Adoptions by Classification (recursive)	Adoptions per classification, including descendants (up to 12 non-zero entries)	Classification / Adoptions	Show adoption spread across the hierarchy
+| Chart (dropdown choice) | Data displayed | Axis labels | Purpose |
+|---|---|---|---|
+| Adoptions by Species | Completed adoptions per species | Species / Adoptions | Compare adoption frequency |
+| Top Adopted Breeds (Top 8) | The eight breeds with the most adoptions | Breed / Adoptions | Highlight the most adopted breeds |
+| Average Shelter Stay (days) by Species | Average shelter days per species | Species / Days | Compare stay length |
+| Adoptions by Classification (recursive) | Adoptions per classification, including descendants (up to 12 non-zero entries) | Classification / Adoptions | Show adoption spread across the hierarchy |
 
 The dashboard also shows a text summary: total animals, completed adoptions, most adopted species and breed, average shelter stay, and adopters currently on waitlists.
+
+---
