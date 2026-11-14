@@ -1,6 +1,6 @@
 package pawtrack.service;
 
-import pawtrack.db.ClassificationDao;
+import pawtrack.dao.ClassificationDao;
 import pawtrack.model.ClassificationNode;
 import pawtrack.model.Species;
 
@@ -12,9 +12,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Wraps the classification tree and exposes recursive search helpers. Nothing
- * here uses fixed-depth iteration: every traversal is depth-first recursion so
- * the taxonomy may nest arbitrarily deep.
+ * Wraps the classification tree and exposes recursive search helpers.
+ * Includes validation for missing parents and cycle detection.
  */
 public final class ClassificationService {
 
@@ -26,7 +25,6 @@ public final class ClassificationService {
         }
         this.root = root;
     }
-
 
     public static ClassificationNode defaultTaxonomy() {
         ClassificationNode root = new ClassificationNode(0, "All Animals");
@@ -64,12 +62,31 @@ public final class ClassificationService {
         return fromRows(dao.loadAll());
     }
 
-    /** Rebuilds a navigable tree from flat database rows. */
+    /** Rebuilds a navigable tree from flat database rows with cycle detection and missing parent checks. */
+    /** Rebuilds a navigable tree from flat database rows with cycle detection and missing parent checks. */
     public static ClassificationService fromRows(List<ClassificationDao.Row> rows) {
         Map<Integer, ClassificationNode> byId = new LinkedHashMap<>();
+        Map<Integer, Integer> childToParent = new LinkedHashMap<>();
+
         for (ClassificationDao.Row row : rows) {
             byId.put(row.id(), new ClassificationNode(row.id(), row.name()));
+            if (row.parentId() != null) {
+                childToParent.put(row.id(), row.parentId());
+            }
         }
+
+        // Cycle detection: walk up from each node using parent links
+        for (Integer id : childToParent.keySet()) {
+            Integer curr = id;
+            java.util.Set<Integer> visited = new java.util.HashSet<>();
+            while (curr != null) {
+                if (!visited.add(curr)) {
+                    throw new IllegalStateException("Classification cycle detected involving node ID " + curr);
+                }
+                curr = childToParent.get(curr);
+            }
+        }
+
         ClassificationNode root = null;
         for (ClassificationDao.Row row : rows) {
             if (row.parentId() == null) {
@@ -77,19 +94,49 @@ public final class ClassificationService {
                 break;
             }
         }
+
         for (ClassificationDao.Row row : rows) {
             if (row.parentId() != null) {
                 ClassificationNode parent = byId.get(row.parentId());
                 ClassificationNode child = byId.get(row.id());
-                if (parent != null && child != null) {
+                if (parent == null) {
+                    throw new IllegalStateException("Missing parent ID " + row.parentId() + " for node ID " + row.id() + " (" + row.name() + ")");
+                }
+                if (child != null) {
                     parent.addChild(child);
                 }
             }
         }
+
         if (root == null) {
             root = defaultTaxonomy();
         }
         return new ClassificationService(root);
+    }
+
+    private static boolean isDescendant(ClassificationNode node, ClassificationNode target) {
+        if (node == target) {
+            return true;
+        }
+        for (ClassificationNode child : node.flatten()) {
+            if (child == target) {
+                // If target is in the flat list under node, it's a descendant
+                // Or check children explicitly if flatten includes node itself:
+            }
+        }
+        // Simple recursive check through children
+        return checkDescendantRecursive(node, target);
+    }
+
+    private static boolean checkDescendantRecursive(ClassificationNode current, ClassificationNode target) {
+        if (current == target) {
+            return true;
+        }
+        for (ClassificationNode child : current.flatten()) {
+            // Flatten returns self and descendants; let's verify direct children traversal if flatten is available, 
+            // otherwise check name or ID equality.
+        }
+        return false;
     }
 
     public ClassificationNode root() {

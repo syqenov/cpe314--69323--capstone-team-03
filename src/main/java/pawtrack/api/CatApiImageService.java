@@ -1,24 +1,23 @@
 package pawtrack.api;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
+import pawtrack.dto.CatImageDto;
 import pawtrack.model.Species;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
  * Client for <a href="https://thecatapi.com">TheCatAPI</a>.
- *
- * <p>A free API key is available after registration and is read from the
- * {@code CAT_API_KEY} environment variable (or the {@code cat.api.key} system
- * property). The public image-search endpoint also works without a key at a low
- * rate limit, so the demo runs out of the box.</p>
  */
 public final class CatApiImageService implements PetImageService {
 
     private static final String BASE = "https://api.thecatapi.com/v1";
+    private static final Gson GSON = new Gson();
 
     private final String apiKey;
 
@@ -54,34 +53,66 @@ public final class CatApiImageService implements PetImageService {
         if (apiKey != null && !apiKey.isBlank()) {
             headers.put("x-api-key", apiKey);
         }
-        String json = HttpJson.get(BASE + "/images/search?limit=1&has_breeds=1", headers);
+
+        String url = BASE + "/images/search?limit=1&has_breeds=1";
+        if (breed != null && !breed.isBlank()) {
+            try {
+                String breedsJson = HttpJson.get(BASE + "/breeds", headers);
+                Map<String, String> breedMap = parseBreedList(breedsJson);
+                String breedId = null;
+                for (Map.Entry<String, String> entry : breedMap.entrySet()) {
+                    if (entry.getValue().equalsIgnoreCase(breed.trim()) || entry.getKey().equalsIgnoreCase(breed.trim())) {
+                        breedId = entry.getKey();
+                        break;
+                    }
+                }
+                if (breedId != null) {
+                    url = BASE + "/images/search?limit=1&breed_ids=" + URLEncoder.encode(breedId, StandardCharsets.UTF_8);
+                }
+            } catch (Exception ignored) {
+                // Fallback to general search if breed lookup fails
+            }
+        }
+
+        String json = HttpJson.get(url, headers);
         return new PetImageResult(parseImageUrl(json), Species.CAT, breed == null ? "" : breed, providerName());
     }
 
     /** Parses {@code [{"id":"...","url":"https://...","breeds":[...]}]}. */
     public static String parseImageUrl(String json) {
-        JSONArray array = new JSONArray(json);
-        if (array.isEmpty()) {
-            throw new IllegalArgumentException("TheCatAPI returned no image");
+        try {
+            CatImageDto[] arr = GSON.fromJson(json, CatImageDto[].class);
+            if (arr == null || arr.length == 0) {
+                throw new IllegalArgumentException("TheCatAPI returned no image");
+            }
+            String url = arr[0].url();
+            if (url == null || url.isBlank()) {
+                throw new IllegalArgumentException("TheCatAPI image url is missing");
+            }
+            return url;
+        } catch (JsonSyntaxException e) {
+            throw new IllegalArgumentException("TheCatAPI returned invalid JSON", e);
         }
-        String url = array.getJSONObject(0).optString("url", "");
-        if (url.isBlank()) {
-            throw new IllegalArgumentException("TheCatAPI image url is missing");
-        }
-        return url;
     }
 
     /** Parses {@code [{"id":"abys","name":"Abyssinian", ...}]} into id -&gt; name. */
     public static Map<String, String> parseBreedList(String json) {
         Map<String, String> breeds = new LinkedHashMap<>();
-        JSONArray array = new JSONArray(json);
-        for (int i = 0; i < array.length(); i++) {
-            JSONObject breed = array.getJSONObject(i);
-            String id = breed.optString("id", "");
-            String name = breed.optString("name", id);
-            if (!id.isBlank()) {
-                breeds.put(id, name);
+        try {
+            com.google.gson.JsonArray array = GSON.fromJson(json, com.google.gson.JsonArray.class);
+            if (array == null) {
+                return breeds;
             }
+            for (com.google.gson.JsonElement el : array) {
+                com.google.gson.JsonObject obj = el.getAsJsonObject();
+                String id = obj.has("id") ? obj.get("id").getAsString() : "";
+                String name = obj.has("name") ? obj.get("name").getAsString() : id;
+                if (!id.isBlank()) {
+                    breeds.put(id, name);
+                }
+            }
+        } catch (JsonSyntaxException e) {
+            throw new IllegalArgumentException("TheCatAPI returned invalid JSON", e);
         }
         return breeds;
     }

@@ -5,6 +5,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Node of the species/breed classification tree. The tree is intentionally
+ * unbounded in depth (e.g. Dog &gt; Sporting Group &gt; Retriever &gt; Golden Retriever)
+ * and is explored with recursion only.
+ */
 public final class ClassificationNode {
 
     private int id;

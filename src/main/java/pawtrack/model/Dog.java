@@ -2,6 +2,13 @@ package pawtrack.model;
 
 import java.time.LocalDate;
 
+/**
+ * Concrete {@link Animal} implementation for dogs.
+ *
+ * <p>Fee rules: puppies cost more (vaccination/sterilisation overhead), adult
+ * dogs are the standard fee and senior dogs receive a reduced "senior adoption"
+ * fee.</p>
+ */
 public final class Dog extends Animal {
 
     public static final double PUPPY_FEE = 300.0;

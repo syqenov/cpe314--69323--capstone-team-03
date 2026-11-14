@@ -1,49 +1,72 @@
 ## cpe314--69323--capstone-team-03
 
-# CPE 314 Capstone Project Proposal — Pet Shelter &amp; Adoption Tracker
+# CPE 314 — Software Design & Software Design Laboratory
+
+## Week 8 — Project Proposal
+
+| Field | Details |
+|---------|---------|
+| **Group Name / No.** | **Group 3** |
+| **Members** | Shann Michael Agang - UI Designer |
+|  | Sofia Yvonne Enovero - Team Lead / Developer |
+|  | Kyle Cheznie Taghoy - QA (Quality Assurance) |
+|  | Aeisha Mae Elizar - Database Admin |
+|  | Cleint Lausa - Developer |
+| **Repository URL** | `cpe314--69323--capstone-team-03` |
+| **Theme** | Pet Shelter & Adaptation Tracker |
+| **API You Will Use** | - https://dog.ceo/dog-api/documentation<br>- https://thecatapi.com |
+
+---
 
 ## 1. One paragraph Pitch 
 
-The Pet Shelter & Adoption Tracker is an offline-first Java desktop application designed to help animal shelter staff and volunteers transition away from scattered spreadsheets and paper records into a centralized system. The app streamlines daily operations by modeling species with custom care schedules, managing adoption waitlists using queues, supporting status undo actions via a stack, and enabling historical log imports from CSV files. Integrated pet APIs (Dog CEO API and TheCatAPI) auto-fill sample images and breed details, while built-in analytics render adoption trends and stay durations as visual bar charts. Ultimately, the
-system empowers shelter teams to make data-driven decisions and efficiently manage animals from intake through final adoption.
+PawTrack (Pet Shelter & Adoption Tracker) is a Java-based desktop application designed to streamline animal shelter operations by providing an organized system for managing animal records, adopter information, adoption waitlists, and adoption activities. It enables shelter staff to maintain animal records, manage adoption interests, track adoption progress, import animal data through CSV files, and generate analytics to support shelter operations and decision-making. The system uses object-oriented programming principles, data structures, Java Swing, SQLite, and JDBC to provide its core functionalities, with STAFF and ADOPTER roles for secure access. It also integrates external APIs to retrieve sample dog and cat images, requiring an internet connection only for image retrieval while core operations remain locally accessible through the SQLite database.
+
+<br> 
 
 ## 2. Entity-Relationship Sketch
+![Priliminary ERD](./erd.png)
+
 ### Entity Attributes
 
-| Entity         | Key Attributes                                                                                                        |
-| -------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Classification | id (PK), name, parent_id (FK → Classification.id)                                                                     |
-| Animal         | id (PK), name, species, breed, age_months, intake_date, status, image_url, classification_id (FK → Classification.id) |
-| Adopter        | id (PK), name, email (unique), phone                                                                                  |
-| AdoptionRecord | id (PK), animal_id (FK → Animal.id), adopter_id (FK → Adopter.id), adoption_date, fee_paid                            |
-| WaitlistEntry  | id (PK), animal_id (FK → Animal.id), adopter_id (FK → Adopter.id), requested_at, position                             |
+| Entity | Key Attributes |
+|---|---|
+| Classification | id (PK), name, parent_id (FK → Classification.id, nullable) |
+| Animal | id (PK), name, species, breed, age_months, intake_date, status, classification_id (FK → Classification.id) |
+| Adopter | id (PK), name, email (unique), phone |
+| AdoptionRecord | id (PK), animal_id (FK → Animal.id), adopter_id (FK → Adopter.id), adoption_date, fee_paid |
+| WaitlistEntry | id (PK), animal_id (FK → Animal.id), adopter_id (FK → Adopter.id), requested_at, position |
+| User | id (PK), username (unique), password_hash, role, adopter_id (FK → Adopter.id, nullable) |
 
 ### Entity Relationships
 
-| Parent Entity  | Relationship | Child Entity   | Foreign Key          | Description                                                                                           |
-| -------------- | ------------ | -------------- | -------------------- | ----------------------------------------------------------------------------------------------------- |
-| Classification | 1:M          | Classification | parent_id (nullable) | Self-referencing taxonomy tree of any depth, e.g. Dog → Sporting Group → Retriever → Golden Retriever |
-| Classification | 1:M          | Animal         | classification_id    | Each animal belongs to one classification                                                             |
-| Animal         | 1:M          | AdoptionRecord | animal_id            | An animal can have adoption records                                                                   |
-| Adopter        | 1:M          | AdoptionRecord | adopter_id           | An adopter can adopt multiple animals                                                                 |
-| Animal         | 1:M          | WaitlistEntry  | animal_id            | An animal can have many adopters waiting                                                              |
-| Adopter        | 1:M          | WaitlistEntry  | adopter_id           | An adopter can wait on multiple animals                                                               |
+| Parent Entity | Relationship | Child Entity | Foreign Key | Description |
+|---|---|---|---|---|
+| Classification | 1:M | Classification | parent_id (nullable) | Self-referencing classification tree that supports multiple levels, e.g., Dog → Sporting Group → Retriever → Golden Retriever. |
+| Classification | 1:M | Animal | classification_id | Each animal belongs to one classification. |
+| Animal | 1:M | AdoptionRecord | animal_id | An animal can have adoption records. |
+| Adopter | 1:M | AdoptionRecord | adopter_id | An adopter can adopt multiple animals. |
+| Animal | 1:M | WaitlistEntry | animal_id | An animal can have multiple adopters on its waitlist. |
+| Adopter | 1:M | WaitlistEntry | adopter_id | An adopter can be on the waitlists of multiple animals. |
+| Adopter	| 1:1	| User | adopter_id (nullable) |	An adopter profile can be linked to a specific user account so they can log in and view their personal waitlist and adoption history. |
+<br>
 
-## 3. Feature Checklist 
-| Planned Feature                                                                                                                           | Requirement(s) It Satisfies                                                                                                                       |
-| ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Animal types: Dog and Cat (one abstract class + three concrete classes)                                                               | **Object-Oriented Design:** Creates a main Animal blueprint with specialized sub-types that calculate their own adoption fees and care schedules. |
-| Queue waitlist per animal (first person in line gets served first)                                                                        | **Data Structure / Recursion:** Uses a Queue (first-come, first-served line) for people waiting to adopt.                                         |
-| Stack to undo last status change                                                                                                          | **Data Structure / Recursion:** Uses a Stack, like a Ctrl+Z for status changes, powering the "Undo Last Action" button.                           |
-| Tree for breeds (Dog > Sporting Group > Retriever > Golden Retriever) searched with recursion                                             | **Data Structure / Recursion:** Uses a recursive search that digs through multi-level breed categories no matter how many levels deep.            |
-| JUnit 5 tests (at least 6): fee calculation per subtype, queue order, undo on an empty stack, recursive search at shallow and deep levels | **Automated Testing:** Tests normal and edge cases for the core logic classes.                                                                    |
-| SQLite database with PreparedStatement for animals, adopters, and adoption records                                                        | **Data Modeling + Database:** Stores shelter animals, adopters, and adoption history locally using SQLite and JDBC.                               |
-| Call Dog CEO API and TheCatAPI, read JSON, use images/breeds in app                                                                       | **REST API Consumption:** Retrieves live animal data from public APIs and displays the parsed information in the application.                     |
-| Swing GUI with buttons and combo boxes (list animal, import CSV, record interest, mark adopted, view analytics)                           | **Event-Driven GUI:** Provides an interactive interface for shelter staff through buttons, forms, and lists.                                      |
-| Import historical intake/adoption CSV on a background thread (SwingWorker)                                                                | **Concurrency:** Runs long imports in the background so the application remains responsive.                                                       |
-| Analyze most-adopted breed/species and average shelter stay length                                                                        | **Data Mining:** Performs aggregation and frequency analysis on shelter data.                                                                     |
-| Bar chart of the mining results, with labeled axes and title                                                                              | **Data Visualization:** Displays data mining results in a properly labeled chart.                                                                 |
+## 3. Feature Checklist
 
+| Implemented Feature | Requirement(s) It Satisfies |
+|---|---|
+| Animal types: Dog and Cat (one abstract class and two concrete subclasses) | **Object-Oriented Design:** Uses an abstract `Animal` class with specialized Dog and Cat subclasses that implement their own adoption fees and care schedules. |
+| Queue waitlist per animal (first person in line gets served first) | **Data Structure / Recursion:** Uses a Queue to manage adopters waiting for each animal in a first-come, first-served order. |
+| Stack to undo last status change | **Data Structure / Recursion:** Uses a Stack to keep track of status changes and support the "Undo Last Action" function. |
+| Tree for classifications (Dog > Sporting Group > Retriever > Golden Retriever) searched with recursion | **Data Structure / Recursion:** Uses a hierarchical classification tree and recursive search to find classifications at different levels. |
+| JUnit 5 tests (at least 6): fee calculation per subtype, queue order, undo on an empty stack, and recursive search at shallow and deep levels | **Automated Testing:** Tests normal and edge cases for the system's core logic and data structures. |
+| SQLite database with PreparedStatement for animals, adopters, adoption records, classifications, and waitlist entries | **Data Modeling + Database:** Stores animal records, adopter information, adoption history, classifications, and waitlist entries locally using SQLite and JDBC. |
+| Dog CEO API and TheCatAPI integration, JSON parsing, and sample pet image retrieval | **REST API Consumption:** Sends requests to external APIs, parses JSON responses, and retrieves sample dog and cat images for display in the application. |
+| Swing GUI with buttons and combo boxes (list animals, import CSV, record interest, mark adopted, and view analytics) | **Event-Driven GUI:** Provides an interactive interface for shelter staff to manage animal records, record adopter interest, process adoptions, and view analytics. |
+| Import historical intake/adoption CSV files on a background thread using SwingWorker | **Concurrency:** Performs CSV imports in the background so the application remains responsive during data processing. |
+| Analyze most-adopted breed/species and average shelter stay length | **Data Mining:** Performs data aggregation and frequency analysis to generate useful shelter statistics. |
+| Bar chart of the analytics results, with labeled axes and title | **Data Visualization:** Displays analytics results through a properly labeled bar chart. |
+| Login authentication with STAFF and ADOPTER roles | **Authentication / Access Control:** Provides secure login, password hashing, and role-based access control to application features according to assigned permissions. |
 ## 4. Task Split 
 | Member | Primary Responsibility (this milestone) |
 | --- | --- |
@@ -66,12 +89,9 @@ system empowers shelter teams to make data-driven decisions and efficiently mana
 ---
 
 ## 6. Risks / Open Questions
-The following items require further clarification or may present implementation challenges:
+- The Stack lets staff undo the last status change, but a status change can also create an AdoptionRecord row in SQLite. When staff undo “Adopted” back to “Available”, should the undo also delete that AdoptionRecord and restore the waitlist entry, or should the record stay and be marked as reversed so the shelter’s history is preserved? 
+- Breed names returned by the APIs (for example retriever/golden) may not match the nodes of our classification tree. Should an unmatched breed fall back to the Dog or Cat root node so that every animal still receives a classification?
+- The adoption waitlist is a Queue held in memory, but waitlist entries are also stored in the waitlist_entry table. Should the queue be rebuilt from that table when the application restarts so that no adopter loses their place in line?
+- Our animal types include “Other”, which neither Dog CEO nor TheCatAPI covers. Is it acceptable for those animals to use a placeholder image?
 
-- How should the application handle situations when an external API becomes unavailable or experiences downtime?
-- Should the SQLite database file be stored within the project directory or in a separate location?
-- Do the JUnit 5 tests need to run successfully without a database connection or network access?
-- If a CSV file contains incorrect or missing data, how do we handle it during import?
-- Is there a required CSV format or row count, or can we define our own?
-- Our animal types include “Other”, which neither Dog CEO nor TheCatAPI covers. Is it acceptable for those animals to use a placeholder image? 
 

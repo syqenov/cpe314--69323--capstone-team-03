@@ -1,5 +1,9 @@
 package pawtrack.model;
 
+/**
+ * Lifecycle of an animal inside the shelter. Transitions are tracked by the
+ * undo {@link pawtrack.service.StatusHistoryService}.
+ */
 public enum AnimalStatus {
     INTAKE("Intake"),
     AVAILABLE("Available"),
