@@ -1,7 +1,7 @@
 # PawTrack - Known Issues & Limitations
 
 ## Current Status
-* **Test Count:** 75 tests passing (100% of suite).
+* **Test Count:** 133 tests passing (100% of suite).
 
 ## Known Limitations
 * **Cat API Breed Matching:** TheCatAPI free tier endpoint returns a random cat image rather than matching the specific breed of the animal. This is a documented limitation of the external API provider.
