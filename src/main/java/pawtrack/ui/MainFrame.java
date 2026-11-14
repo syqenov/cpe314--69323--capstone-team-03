@@ -14,7 +14,6 @@ import pawtrack.dao.AnimalDao;
 import pawtrack.dao.ClassificationDao;
 import pawtrack.dao.Database;
 import pawtrack.dao.WaitlistDao;
-import pawtrack.dao.UserDao;
 import pawtrack.model.Adopter;
 import pawtrack.model.AdoptionRecord;
 import pawtrack.model.Animal;
@@ -27,7 +26,6 @@ import pawtrack.service.ShelterSeeder;
 import pawtrack.service.StatusHistoryService;
 import pawtrack.service.WaitlistService;
 
-
 import pawtrack.model.Role;
 import pawtrack.model.User;
 
@@ -35,34 +33,25 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
-import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JMenu;
-import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
+import java.awt.CardLayout;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.KeyStroke;
 import javax.swing.SwingWorker;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.BorderLayout;
-import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.KeyEvent;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -80,9 +69,7 @@ import java.util.Optional;
 public final class MainFrame extends JFrame {
 
     private static final String ALL_CLASSIFICATIONS = "<All animals>";
-    // Private helper for MainFrame GUI logic
     private static final Dimension IMAGE_SIZE = new Dimension(260, 250);
-    // PawTrack's existing blue identity, refined with softer surfaces and navy accents.
     private static final Color PANEL_BLUE = new Color(0xB7D7F0);
     private static final Color TABLE_BLUE = new Color(0xF7FBFF);
     private static final Color TOOLBAR_BLUE = new Color(0xA5C9E7);
@@ -97,6 +84,7 @@ public final class MainFrame extends JFrame {
     private static final java.awt.Font LABEL_FONT = new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13);
     private static final java.util.logging.Logger LOGGER =
             java.util.logging.Logger.getLogger(MainFrame.class.getName());
+    private List<WaitlistController.WaitlistRequest> displayedRequests = new ArrayList<>();
 
     private final Database database;
     private final AnimalDao animalDao;
@@ -106,95 +94,73 @@ public final class MainFrame extends JFrame {
     private final WaitlistDao waitlistDao;
 
     private ClassificationService classification;
-    // Private helper for MainFrame GUI logic
     private final WaitlistService waitlist = new WaitlistService();
-    // Private helper for MainFrame GUI logic
     private final StatusHistoryService history = new StatusHistoryService();
-    // Private helper for MainFrame GUI logic
     private final AnalyticsService analytics = new AnalyticsService();
 
-    // Controllers hold the logic; the view only calls one method per click.
     private final AnimalController animalController;
     private final AdoptionController adoptionController;
-    private final WaitlistController waitlistController;
+    private final AuthController auth;
+    
     private final AnalyticsController analyticsController;
     private final ClassificationController classificationController;
     private final ImportController importController;
+    private final WaitlistController waitlistController;
 
-    // Private helper for MainFrame GUI logic
     private final AnimalTableModel tableModel = new AnimalTableModel(waitlist);
-    // Private helper for MainFrame GUI logic
     private final JTable animalTable = new JTable(tableModel);
-    // Private helper for MainFrame GUI logic
     private final JTextArea logArea = new JTextArea();
     private JTextArea myRecordsArea;
     private javax.swing.table.DefaultTableModel waitlistModel;
     private JTable waitlistTable;
     private CardLayout cardLayout;
     private JPanel contentPanel;
-    private final java.util.List<RoundedUi.RoundedButton> tabButtons = new java.util.ArrayList<>();
-    private final java.util.List<String> tabNames = new java.util.ArrayList<>();
+    private final List<RoundedUi.RoundedButton> tabButtons = new ArrayList<>();
+    private final List<String> tabNames = new ArrayList<>();
     private JPanel toolbar;
+    private JPanel toolbarHolder;
+    private JScrollPane toolbarScroll;
+    private JPanel userProfilePanel;
+    private CardLayout profileCardLayout;
+    private JButton collapseToggle;
+    private final List<JButton> toolbarActionButtons = new ArrayList<>();
     private JPanel imagePanel;
     private boolean toolbarMinimized = false;
     private javax.swing.JDialog statusPopup;
     private final User user;
     private Runnable onLogout;
-    // Private helper for MainFrame GUI logic
     private final JProgressBar progressBar = new JProgressBar(0, 100);
-    // Private helper for MainFrame GUI logic
     private final JLabel statusLabel = new JLabel("Ready");
-    // Private helper for MainFrame GUI logic
     private final JComboBox<String> classificationFilter = new RoundedUi.RoundedComboBox(18);
-    // Private helper for MainFrame GUI logic
     private final JLabel imageLabel = new JLabel();
-    // Private helper for MainFrame GUI logic
     private final JLabel imageInfoLabel = new JLabel(" ");
-    // Private helper for MainFrame GUI logic
     private final AnalyticsPanel analyticsPanel = new AnalyticsPanel();
-    // Private helper for MainFrame GUI logic
-    private final RoundedUi.LoadingSpinner spinner = new RoundedUi.LoadingSpinner();
-    // Private helper for MainFrame GUI logic
-    private boolean rowStripingEnabled = true;
-    // Private helper for MainFrame GUI logic
-    private final JLabel connectionStatusLabel = new JLabel("● Connected");
-    // Private helper for MainFrame GUI logic
-    private boolean darkMode = false;
-    // Private helper for MainFrame GUI logic
-    private JPanel statusBar;
-    // Private helper for MainFrame GUI logic
-    private JPanel previewCard;
-    // Private helper for MainFrame GUI logic
-    private JPanel userProfilePanel;
-    // Private helper for MainFrame GUI logic
-    private JLabel caption;
-    // Private helper for MainFrame GUI logic
-    private JLabel username;
-    // Private helper for MainFrame GUI logic
-    private JLabel role;
 
-    public MainFrame(User user, Database database) throws SQLException {
+    public MainFrame(User user, Database database, AuthController authController, 
+            AnimalController animalController, AdoptionController adoptionController) throws SQLException {
         super("Pet Shelter & Adoption Tracker");
         this.user = user;
         this.database = database;
+        this.auth = authController;
+        this.animalController = animalController;
+        this.adoptionController = adoptionController;		
+        
         this.animalDao = new AnimalDao(database);
         this.adopterDao = new AdopterDao(database);
         this.recordDao = new AdoptionRecordDao(database);
         this.classificationDao = new ClassificationDao(database);
         this.waitlistDao = new WaitlistDao(database);
-
+        
         this.classification = ClassificationService.loadOrSeed(classificationDao);
-        ShelterSeeder.seedIfEmpty(database, classification);
-
-        AuthController authController = new AuthController(new UserDao(database));
-        this.animalController = new AnimalController(animalDao);
-        this.adoptionController = new AdoptionController(animalDao, adopterDao, recordDao, history, authController);
+        
         this.waitlistController = new WaitlistController(waitlist, waitlistDao, adopterDao, animalDao, history);
-        this.analyticsController = new AnalyticsController(animalDao, recordDao, analytics, waitlist, classification);
         this.classificationController = new ClassificationController(classification, animalDao);
-        this.importController = new ImportController(database, classification, authController);
-        this.waitlistController.loadFromDb();
-
+        this.importController = new ImportController(database, classification, auth);
+        this.analyticsController = new AnalyticsController(animalDao, recordDao, analytics, waitlist, classification);
+        
+        ShelterSeeder.seedIfEmpty(database, classification);
+        loadWaitlists();
+        
         buildUi();
         populateClassificationFilter();
         refreshAnimals();
@@ -210,34 +176,29 @@ public final class MainFrame extends JFrame {
         this.onLogout = onLogout;
     }
 
-    // ------------------------------------------------------------------ UI
+    private void buildUi() {
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout(8, 8));
+        setMinimumSize(new Dimension(1100, 680));
+        java.awt.Image icon = Icons.appIcon();
+        if (icon != null) {
+            setIconImage(icon);
+        }
+        getContentPane().setBackground(PANEL_BLUE);
+        javax.swing.UIManager.put("Label.font", BODY_FONT);
+        javax.swing.UIManager.put("Button.font", BODY_FONT);
+        javax.swing.UIManager.put("Table.font", BODY_FONT);
+        javax.swing.UIManager.put("TableHeader.font", LABEL_FONT);
+        javax.swing.UIManager.put("ComboBox.font", BODY_FONT);
 
-// Private helper for MainFrame GUI logic
-        private void buildUi() {
-            setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            setLayout(new BorderLayout(8, 8));
-            setMinimumSize(new Dimension(1100, 680));
-            java.awt.Image icon = Icons.appIcon();
-            if (icon != null) {
-                setIconImage(icon);
-            }
-            getContentPane().setBackground(PANEL_BLUE);
-            javax.swing.UIManager.put("Label.font", BODY_FONT);
-            javax.swing.UIManager.put("Button.font", BODY_FONT);
-            javax.swing.UIManager.put("Table.font", BODY_FONT);
-            javax.swing.UIManager.put("TableHeader.font", LABEL_FONT);
-            javax.swing.UIManager.put("ComboBox.font", BODY_FONT);
-
-            setupKeyboardShortcuts();
-
-        // Keep a small gap between the panel content and its scrollbar.
-        JPanel toolbarHolder = new JPanel(new BorderLayout());
+        toolbarHolder = new JPanel(new BorderLayout());
         toolbarHolder.setOpaque(false);
         toolbarHolder.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 12));
         toolbarHolder.add(buildToolbar(), BorderLayout.CENTER);
-        JScrollPane toolbarScroll = new JScrollPane(toolbarHolder,
+        toolbarScroll = new JScrollPane(toolbarHolder,
                 JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         toolbarScroll.setBorder(null);
+        toolbarScroll.setPreferredSize(new Dimension(284, 700));
         toolbarScroll.getViewport().setBackground(TOOLBAR_BLUE);
         styleScrollBar(toolbarScroll.getVerticalScrollBar());
         add(toolbarScroll, BorderLayout.WEST);
@@ -272,8 +233,7 @@ public final class MainFrame extends JFrame {
         }
 
         add(buildImagePanel(), BorderLayout.EAST);
-        this.statusBar = buildStatusBar();
-        add(statusBar, BorderLayout.SOUTH);
+        add(statusLabel, BorderLayout.SOUTH);
 
         progressBar.setStringPainted(true);
         progressBar.setString("");
@@ -295,7 +255,6 @@ public final class MainFrame extends JFrame {
         animalTable.setIntercellSpacing(new Dimension(0, 1));
         animalTable.setSelectionBackground(new Color(0xC5DFF3));
         animalTable.setSelectionForeground(NAVY_BLUE);
-        animalTable.setFillsViewportHeight(true);
         animalTable.getTableHeader().setOpaque(true);
         animalTable.getTableHeader().setPreferredSize(new Dimension(0, 38));
         animalTable.getTableHeader().setFont(LABEL_FONT);
@@ -332,7 +291,6 @@ public final class MainFrame extends JFrame {
                 try {
                     database.close();
                 } catch (SQLException failure) {
-                    // nothing useful to do while shutting down
                     MainFrame.LOGGER.log(java.util.logging.Level.WARNING, "Failed to close database", failure);
                 }
             }
@@ -342,7 +300,6 @@ public final class MainFrame extends JFrame {
         setLocationRelativeTo(null);
     }
 
-    // Private helper for MainFrame GUI logic
     private void addTabButton(String title, java.awt.Component content) {
         RoundedUi.RoundedButton btn = new RoundedUi.RoundedButton(title, 18, TAB_COLOR);
         btn.setPreferredSize(new Dimension(178, 44));
@@ -354,7 +311,6 @@ public final class MainFrame extends JFrame {
         tabNames.add(title);
     }
 
-    // Private helper for MainFrame GUI logic
     private JPanel buildTabBar() {
         JPanel bar = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 8));
         bar.setOpaque(false);
@@ -364,7 +320,6 @@ public final class MainFrame extends JFrame {
         return bar;
     }
 
-    // Private helper for MainFrame GUI logic
     private void selectTab(String title) {
         cardLayout.show(contentPanel, title);
         for (int i = 0; i < tabButtons.size(); i++) {
@@ -372,7 +327,6 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // Private helper for MainFrame GUI logic
     private JPanel buildToolbar() {
         toolbar = new JPanel();
         toolbar.setLayout(new BoxLayout(toolbar, BoxLayout.Y_AXIS));
@@ -383,17 +337,19 @@ public final class MainFrame extends JFrame {
                 new RoundedUi.RoundedBorder(22, BORDER_BLUE, 1),
                 BorderFactory.createEmptyBorder(10, 9, 10, 9)));
 
-        JButton toggle = new RoundedUi.RoundedButton("◄", 18, HOVER_BLUE);
-        toggle.setPreferredSize(new Dimension(40, 40));
-        toggle.setMinimumSize(new Dimension(40, 40));
-        toggle.setMaximumSize(new Dimension(40, 40));
-        toggle.setAlignmentX(Component.RIGHT_ALIGNMENT);
-        toggle.addActionListener(event -> {
+        collapseToggle = new RoundedUi.RoundedButton("◄", 18, HOVER_BLUE);
+        collapseToggle.setToolTipText("Collapse sidebar");
+        collapseToggle.setPreferredSize(new Dimension(40, 40));
+        collapseToggle.setMinimumSize(new Dimension(40, 40));
+        collapseToggle.setMaximumSize(new Dimension(40, 40));
+        collapseToggle.setAlignmentX(Component.RIGHT_ALIGNMENT);
+        collapseToggle.addActionListener(event -> {
             toolbarMinimized = !toolbarMinimized;
-            toggle.setText(toolbarMinimized ? "►" : "◄");
+            collapseToggle.setText(toolbarMinimized ? "►" : "◄");
+            collapseToggle.setToolTipText(toolbarMinimized ? "Expand sidebar" : "Collapse sidebar");
             applyToolbarMinimize();
         });
-        toolbar.add(toggle);
+        toolbar.add(collapseToggle);
         toolbar.add(Box.createVerticalStrut(10));
         toolbar.add(buildUserProfilePanel());
         toolbar.add(Box.createVerticalStrut(12));
@@ -403,6 +359,9 @@ public final class MainFrame extends JFrame {
         logoutButton.setPreferredSize(new Dimension(240, 40));
         logoutButton.setMinimumSize(new Dimension(240, 40));
         logoutButton.setMaximumSize(new Dimension(240, 40));
+        logoutButton.putClientProperty("fullText", "Logout");
+        logoutButton.setToolTipText("Logout");
+        toolbarActionButtons.add(logoutButton);
         logoutButton.addActionListener(event -> {
             if (onLogout != null) {
                 onLogout.run();
@@ -411,58 +370,30 @@ public final class MainFrame extends JFrame {
         toolbar.add(logoutButton);
         toolbar.add(Box.createVerticalStrut(16));
 
-        toolbar.add(button("List / Refresh Animals", this::onRefreshAnimals, "Refresh the animal list (Ctrl+R)"));
+        toolbar.add(button("List / Refresh Animals", this::onRefreshAnimals));
         toolbar.add(Box.createVerticalStrut(16));
-        toolbar.add(button("Filter by Classification", this::onFilterByClassification, "Focus the classification filter (Ctrl+F)"));
-        toolbar.add(Box.createVerticalStrut(16));
-        if (user.getRole() == Role.STAFF) {
-            toolbar.add(button("Import Intake History (CSV)", this::onImportCsv, "Import animals from CSV file (Ctrl+I)"));
-            toolbar.add(Box.createVerticalStrut(16));
-            toolbar.add(button("Add Animal", this::onAddAnimal, "Add a new animal to the shelter"));
-            toolbar.add(Box.createVerticalStrut(16));
-            toolbar.add(button("Edit Animal", this::onEditAnimal, "Edit the selected animal"));
-            toolbar.add(Box.createVerticalStrut(16));
-            toolbar.add(button("Delete Animal", this::onDeleteAnimal, "Delete the selected animal"));
-            toolbar.add(Box.createVerticalStrut(16));
-        }
-        toolbar.add(button("Record Interest", this::onRecordInterest, "Record adoption interest for selected animal"));
+        toolbar.add(button("Filter by Classification", this::onFilterByClassification));
         toolbar.add(Box.createVerticalStrut(16));
         if (user.getRole() == Role.STAFF) {
-            toolbar.add(button("Mark Adopted", this::onMarkAdopted, "Mark the selected animal as adopted"));
+            toolbar.add(button("Import Intake History (CSV)", this::onImportCsv));
             toolbar.add(Box.createVerticalStrut(16));
-            toolbar.add(button("Undo Last Status Change", this::onUndo, "Undo the last status change (Ctrl+U)"));
+            toolbar.add(button("Add Animal", this::onAddAnimal));
+            toolbar.add(Box.createVerticalStrut(16));
+            toolbar.add(button("Edit Animal", this::onEditAnimal));
+            toolbar.add(Box.createVerticalStrut(16));
+            toolbar.add(button("Delete Animal", this::onDeleteAnimal));
             toolbar.add(Box.createVerticalStrut(16));
         }
-        toolbar.add(button("Fetch Sample Pet Image", this::onFetchImage, "Fetch a sample image for the selected animal"));
+        toolbar.add(button("Record Interest", this::onRecordInterest));
         toolbar.add(Box.createVerticalStrut(16));
-
-        // Quick search filter
-        javax.swing.JTextField searchField = new javax.swing.JTextField();
-        searchField.setAlignmentX(Component.CENTER_ALIGNMENT);
-        searchField.setPreferredSize(new Dimension(240, 36));
-        searchField.setMinimumSize(new Dimension(240, 36));
-        searchField.setMaximumSize(new Dimension(240, 36));
-        searchField.setFont(BODY_FONT);
-        searchField.setBorder(new RoundedUi.RoundedBorder(18, BORDER_BLUE, 1));
-        searchField.putClientProperty("JTextField.placeholderText", "Search animals...");
-        searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { filterTable(); }
-            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { filterTable(); }
-            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { filterTable(); }
-            private void filterTable() {
-                String text = searchField.getText().trim().toLowerCase();
-                javax.swing.table.TableRowSorter<javax.swing.table.TableModel> sorter =
-                        (javax.swing.table.TableRowSorter<javax.swing.table.TableModel>) animalTable.getRowSorter();
-                if (text.isEmpty()) {
-                    sorter.setRowFilter(null);
-                } else {
-                    sorter.setRowFilter(javax.swing.RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(text)));
-                }
-            }
-        });
-        toolbar.add(searchField);
+        if (user.getRole() == Role.STAFF) {
+            toolbar.add(button("Mark Adopted", this::onMarkAdopted));
+            toolbar.add(Box.createVerticalStrut(16));
+            toolbar.add(button("Undo Last Status Change", this::onUndo));
+            toolbar.add(Box.createVerticalStrut(16));
+        }
+        toolbar.add(button("Fetch Sample Pet Image", this::onFetchImage));
         toolbar.add(Box.createVerticalStrut(16));
-
         classificationFilter.setPrototypeDisplayValue("Dog > Sporting Group > Retriever");
         classificationFilter.setAlignmentX(Component.CENTER_ALIGNMENT);
         classificationFilter.setPreferredSize(new Dimension(240, 40));
@@ -471,6 +402,7 @@ public final class MainFrame extends JFrame {
         classificationFilter.setBackground(new Color(0xF7FBFF));
         classificationFilter.setForeground(NAVY_BLUE);
         classificationFilter.setFont(BODY_FONT);
+        classificationFilter.setToolTipText("Filter by Classification");
         classificationFilter.setOpaque(true);
         classificationFilter.setComponentOrientation(java.awt.ComponentOrientation.LEFT_TO_RIGHT);
         classificationFilter.setBorder(new RoundedUi.RoundedBorder(18, BORDER_BLUE, 1));
@@ -481,11 +413,11 @@ public final class MainFrame extends JFrame {
                         isSelected, cellHasFocus);
                 c.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
                 if (index < 0) {
-                    // Closed (selected) state: transparent so the blue fill shows.
                     c.setOpaque(false);
                     c.setForeground(NAVY_BLUE);
+                    c.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+                    c.setText(toolbarMinimized ? "FLT" : (value == null ? "" : value.toString()));
                 } else if (isSelected) {
-                    // Hovered / selected item: vivid blue text on a light background.
                     c.setOpaque(true);
                     c.setBackground(Color.WHITE);
                     c.setForeground(PRIMARY_BLUE);
@@ -506,189 +438,132 @@ public final class MainFrame extends JFrame {
             }
         });
         toolbar.add(classificationFilter);
-
-        // Loading spinner next to progress bar
-        spinner.setAlignmentX(Component.CENTER_ALIGNMENT);
-        toolbar.add(spinner);
-
-        progressBar.setAlignmentX(Component.CENTER_ALIGNMENT);
-        toolbar.add(progressBar);
-
-        // Export to CSV button
-        RoundedUi.RoundedButton exportButton = new RoundedUi.RoundedButton("Export CSV", 18, new Color(0x5D8AA8))
-                .setTooltip("Export animals to CSV (Ctrl+E)");
-        exportButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        exportButton.setPreferredSize(new Dimension(120, 36));
-        exportButton.setMinimumSize(new Dimension(100, 36));
-        exportButton.setMaximumSize(new Dimension(140, 36));
-        exportButton.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
-        exportButton.addActionListener(e -> exportToCsv());
-        toolbar.add(exportButton);
-
-        // Theme toggle button
-        RoundedUi.RoundedButton themeButton = new RoundedUi.RoundedButton(darkMode ? "☀ Light" : "🌙 Dark", 18, new Color(0x5D8AA8))
-                .setTooltip("Toggle dark/light theme (Ctrl+T)");
-        themeButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        themeButton.setPreferredSize(new Dimension(120, 36));
-        themeButton.setMinimumSize(new Dimension(100, 36));
-        themeButton.setMaximumSize(new Dimension(140, 36));
-        themeButton.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
-        themeButton.addActionListener(e -> toggleTheme());
-        toolbar.add(themeButton);
-
-        // Column visibility toggle
-        RoundedUi.RoundedButton columnsButton = new RoundedUi.RoundedButton("Columns", 18, new Color(0x5D8AA8))
-                .setTooltip("Toggle column visibility");
-        columnsButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        columnsButton.setPreferredSize(new Dimension(120, 36));
-        columnsButton.setMinimumSize(new Dimension(100, 36));
-        columnsButton.setMaximumSize(new Dimension(140, 36));
-        columnsButton.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
-        columnsButton.addActionListener(e -> showColumnVisibilityDialog());
-        toolbar.add(columnsButton);
-
         progressBar.setAlignmentX(Component.CENTER_ALIGNMENT);
         toolbar.add(progressBar);
         return toolbar;
     }
 
-    // Private helper for MainFrame GUI logic
+    /**
+     * Changes only the sidebar presentation. Every action button keeps its original
+     * listener and role visibility; collapsed buttons use distinct symbols and tooltips.
+     */
     private void applyToolbarMinimize() {
-        int fullW = 240;
-        int miniW = (int) (fullW * 0.20);
-        Component[] comps = toolbar.getComponents();
-        for (Component c : comps) {
-            if (c instanceof JButton && !((JButton) c).getText().equals("◄") && !((JButton) c).getText().equals("►")) {
-                JButton b = (JButton) c;
-                if (toolbarMinimized) {
-                    b.setText(shorten(b.getText()));
-                    b.setPreferredSize(new Dimension(miniW, 30));
-                    b.setMinimumSize(new Dimension(miniW, 30));
-                    b.setMaximumSize(new Dimension(miniW, 30));
-                } else {
-                    b.setText(restoreText(b.getText()));
-                    b.setPreferredSize(new Dimension(fullW, 40));
-                    b.setMinimumSize(new Dimension(fullW, 40));
-                    b.setMaximumSize(new Dimension(fullW, 40));
-                }
-                b.revalidate();
-            } else if (c instanceof JComboBox) {
-                JComboBox<?> cb = (JComboBox<?>) c;
-                if (toolbarMinimized) {
-                    cb.setPreferredSize(new Dimension(miniW, 30));
-                    cb.setMinimumSize(new Dimension(miniW, 30));
-                    cb.setMaximumSize(new Dimension(miniW, 30));
-                } else {
-                    cb.setPreferredSize(new Dimension(fullW, 40));
-                    cb.setMinimumSize(new Dimension(fullW, 40));
-                    cb.setMaximumSize(new Dimension(fullW, 40));
-                }
-                cb.revalidate();
-            } else if (c instanceof JButton) {
-                JButton tb = (JButton) c;
-                if (tb.getText().equals("◄") || tb.getText().equals("►")) {
-                    tb.setAlignmentX(toolbarMinimized ? Component.CENTER_ALIGNMENT : Component.RIGHT_ALIGNMENT);
-                    tb.revalidate();
-                }
-            } else if (c instanceof JProgressBar) {
-                JProgressBar pb = (JProgressBar) c;
-                if (toolbarMinimized) {
-                    pb.setPreferredSize(new Dimension(miniW, 20));
-                    pb.setMinimumSize(new Dimension(miniW, 20));
-                    pb.setMaximumSize(new Dimension(miniW, 20));
-                } else {
-                    pb.setPreferredSize(new Dimension(160, 22));
-                    pb.setMinimumSize(new Dimension(120, 22));
-                    pb.setMaximumSize(new Dimension(160, 22));
-                }
-                pb.revalidate();
+        // The compact width includes enough room for readable short labels, not ellipses.
+        final int expandedButtonWidth = 240;
+        final int compactButtonWidth = 62;
+        final int toolbarWidth = toolbarMinimized ? 76 : 260;
+        final int holderWidth = toolbarMinimized ? 84 : 272;
+        final int scrollWidth = toolbarMinimized ? 100 : 284;
+
+        for (JButton actionButton : toolbarActionButtons) {
+            String fullText = (String) actionButton.getClientProperty("fullText");
+            if (fullText == null) {
+                fullText = actionButton.getText();
+                actionButton.putClientProperty("fullText", fullText);
             }
+            actionButton.setToolTipText(fullText);
+            if (toolbarMinimized) {
+                actionButton.setText(shortcutLabel(fullText));
+                actionButton.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 9));
+                actionButton.setPreferredSize(new Dimension(compactButtonWidth, 40));
+                actionButton.setMinimumSize(new Dimension(compactButtonWidth, 40));
+                actionButton.setMaximumSize(new Dimension(compactButtonWidth, 40));
+            } else {
+                actionButton.setText(fullText);
+                actionButton.setFont(BODY_FONT);
+                int h = fullText.equals("Logout") ? 40 : 44;
+                actionButton.setPreferredSize(new Dimension(expandedButtonWidth, h));
+                actionButton.setMinimumSize(new Dimension(expandedButtonWidth, h));
+                actionButton.setMaximumSize(new Dimension(expandedButtonWidth, h));
+            }
+            actionButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         }
+
+        profileCardLayout.show(userProfilePanel, toolbarMinimized ? "compact" : "expanded");
+        Dimension profileSize = toolbarMinimized
+                ? new Dimension(compactButtonWidth, 42) : new Dimension(240, 76);
+        userProfilePanel.setPreferredSize(profileSize);
+        userProfilePanel.setMinimumSize(profileSize);
+        userProfilePanel.setMaximumSize(profileSize);
+
+        if (toolbarMinimized) {
+            classificationFilter.setPreferredSize(new Dimension(compactButtonWidth, 40));
+            classificationFilter.setMinimumSize(new Dimension(compactButtonWidth, 40));
+            classificationFilter.setMaximumSize(new Dimension(compactButtonWidth, 40));
+            classificationFilter.setToolTipText("Filter by Classification");
+            progressBar.setVisible(false);
+            collapseToggle.setAlignmentX(Component.CENTER_ALIGNMENT);
+            toolbar.setBorder(BorderFactory.createCompoundBorder(
+                    new RoundedUi.RoundedBorder(18, BORDER_BLUE, 1),
+                    BorderFactory.createEmptyBorder(8, 5, 8, 5)));
+            toolbarHolder.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+            // Keep the compact sidebar clean; mouse-wheel scrolling still works.
+            toolbarScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        } else {
+            classificationFilter.setPreferredSize(new Dimension(expandedButtonWidth, 40));
+            classificationFilter.setMinimumSize(new Dimension(expandedButtonWidth, 40));
+            classificationFilter.setMaximumSize(new Dimension(expandedButtonWidth, 40));
+            progressBar.setVisible(true);
+            progressBar.setPreferredSize(new Dimension(160, 22));
+            progressBar.setMinimumSize(new Dimension(120, 22));
+            progressBar.setMaximumSize(new Dimension(160, 22));
+            collapseToggle.setAlignmentX(Component.RIGHT_ALIGNMENT);
+            toolbar.setBorder(BorderFactory.createCompoundBorder(
+                    new RoundedUi.RoundedBorder(22, BORDER_BLUE, 1),
+                    BorderFactory.createEmptyBorder(10, 9, 10, 9)));
+            toolbarHolder.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 12));
+            toolbarScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        }
+
+        toolbar.setPreferredSize(new Dimension(toolbarWidth, toolbar.getPreferredSize().height));
+        toolbar.setMinimumSize(new Dimension(toolbarWidth, 0));
+        toolbar.setMaximumSize(new Dimension(toolbarWidth, Integer.MAX_VALUE));
+        toolbarHolder.setPreferredSize(new Dimension(holderWidth,
+                Math.max(getHeight(), toolbar.getPreferredSize().height)));
+        toolbarScroll.setPreferredSize(new Dimension(scrollWidth, getHeight()));
+        toolbarScroll.setMinimumSize(new Dimension(scrollWidth, 0));
+
         toolbar.revalidate();
         toolbar.repaint();
-        // Re-layout the frame so the scroll pane / west region reflects the new width.
+        toolbarHolder.revalidate();
+        toolbarScroll.revalidate();
+        toolbarScroll.repaint();
         getContentPane().revalidate();
         getContentPane().repaint();
     }
 
-    private String shorten(String text) {
-        if (text == null) {
-            return text;
-        }
-        if (text.startsWith("List")) {
-            return "List...";
-        }
-        if (text.startsWith("Filter")) {
-            return "Filter...";
-        }
-        if (text.startsWith("Import")) {
-            return "Import...";
-        }
-        if (text.startsWith("Record")) {
-            return "Record...";
-        }
-        if (text.startsWith("Mark")) {
-            return "Mark...";
-        }
-        if (text.startsWith("Undo")) {
-            return "Undo...";
-        }
-        if (text.startsWith("Fetch")) {
-            return "Fetch...";
-        }
-        if (text.startsWith("Add")) {
-            return "Add...";
-        }
-        if (text.startsWith("Edit")) {
-            return "Edit...";
-        }
-        if (text.startsWith("Delete")) {
-            return "Delete...";
-        }
-        if (text.contains("All")) {
-            return "<all...";
-        }
-        return text.length() > 6 ? text.substring(0, 6) + "..." : text;
+    private String shortcutLabel(String label) {
+        if (label == null) return "•";
+        if (label.equals("Logout")) return "OUT";
+        if (label.startsWith("List")) return "LIST";
+        if (label.startsWith("Filter")) return "FLT";
+        if (label.startsWith("Import")) return "CSV";
+        if (label.startsWith("Add")) return "ADD";
+        if (label.startsWith("Edit")) return "EDIT";
+        if (label.startsWith("Delete")) return "DEL";
+        if (label.startsWith("Record")) return "INT";
+        if (label.startsWith("Mark")) return "ADPT";
+        if (label.startsWith("Undo")) return "UNDO";
+        if (label.startsWith("Fetch")) return "IMG";
+        return "•";
     }
 
-    private String restoreText(String text) {
-        if (text.equals("List...")) {
-            return "List / Refresh Animals";
-        }
-        if (text.equals("Filter...")) {
-            return "Filter by Classification";
-        }
-        if (text.equals("Import...")) {
-            return "Import Intake History (CSV)";
-        }
-        if (text.equals("Record...")) {
-            return "Record Interest";
-        }
-        if (text.equals("Mark...")) {
-            return "Mark Adopted";
-        }
-        if (text.equals("Undo...")) {
-            return "Undo Last Status Change";
-        }
-        if (text.equals("Fetch...")) {
-            return "Fetch Sample Pet Image";
-        }
-        if (text.equals("Add...")) {
-            return "Add Animal";
-        }
-        if (text.equals("Edit...")) {
-            return "Edit Animal";
-        }
-        if (text.equals("Delete...")) {
-            return "Delete Animal";
-        }
-        if (text.equals("<all...")) {
-            return "<All animals>";
-        }
-        return text;
+    private String shortcutSymbol(String label) {
+        if (label == null) return "•";
+        if (label.equals("Logout")) return "↪";
+        if (label.startsWith("List")) return "☷";
+        if (label.startsWith("Filter")) return "⌕";
+        if (label.startsWith("Import")) return "⇧";
+        if (label.startsWith("Add")) return "+";
+        if (label.startsWith("Edit")) return "✎";
+        if (label.startsWith("Delete")) return "×";
+        if (label.startsWith("Record")) return "♙";
+        if (label.startsWith("Mark")) return "✓";
+        if (label.startsWith("Undo")) return "↶";
+        if (label.startsWith("Fetch")) return "▧";
+        return "•";
     }
 
-    // Private helper for MainFrame GUI logic
     private JPanel buildAnimalTab() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(PANEL_BLUE);
@@ -701,77 +576,9 @@ public final class MainFrame extends JFrame {
         styleScrollBar(scroll.getVerticalScrollBar());
         styleScrollBar(scroll.getHorizontalScrollBar());
         panel.add(scroll, BorderLayout.CENTER);
-
-        // Context menu for animal table
-        JPopupMenu contextMenu = new JPopupMenu();
-        JMenuItem recordInterestItem = new JMenuItem("Record Interest");
-        recordInterestItem.addActionListener(e -> onRecordInterest());
-        contextMenu.add(recordInterestItem);
-
-        JMenuItem markAdoptedItem = new JMenuItem("Mark Adopted");
-        markAdoptedItem.addActionListener(e -> onMarkAdopted());
-        contextMenu.add(markAdoptedItem);
-
-        JMenuItem undoItem = new JMenuItem("Undo Last Status Change");
-        undoItem.addActionListener(e -> onUndo());
-        contextMenu.add(undoItem);
-
-        JMenuItem fetchImageItem = new JMenuItem("Fetch Sample Image");
-        fetchImageItem.addActionListener(e -> onFetchImage());
-        contextMenu.add(fetchImageItem);
-
-        contextMenu.addSeparator();
-
-        JMenuItem refreshItem = new JMenuItem("Refresh");
-        refreshItem.addActionListener(e -> onRefreshAnimals());
-        contextMenu.add(refreshItem);
-
-        JCheckBoxMenuItem stripingItem = new JCheckBoxMenuItem("Alternating Row Colors", rowStripingEnabled);
-        stripingItem.addActionListener(e -> {
-            rowStripingEnabled = stripingItem.isSelected();
-            animalTable.repaint();
-        });
-        contextMenu.add(stripingItem);
-
-        contextMenu.add(buildColumnVisibilityMenu());
-
-        animalTable.setComponentPopupMenu(contextMenu);
-
         return panel;
     }
 
-    // Private helper for MainFrame GUI logic
-    private JMenu buildColumnVisibilityMenu() {
-        JMenu columnMenu = new JMenu("Columns");
-        for (int i = 0; i < animalTable.getColumnCount(); i++) {
-            final int colIndex = i;
-            final String colName = animalTable.getColumnName(i);
-            JCheckBoxMenuItem item = new JCheckBoxMenuItem(colName, true);
-            item.addActionListener(e -> {
-                javax.swing.table.TableColumn column = animalTable.getColumnModel().getColumn(colIndex);
-                column.setMinWidth(item.isSelected() ? 50 : 0);
-                column.setMaxWidth(item.isSelected() ? Integer.MAX_VALUE : 0);
-                column.setPreferredWidth(item.isSelected() ? 100 : 0);
-                column.setResizable(item.isSelected());
-            });
-            columnMenu.add(item);
-        }
-        return columnMenu;
-    }
-
-    // Private helper for MainFrame GUI logic
-    private void rebuildColumnVisibilityMenu(JPopupMenu contextMenu) {
-        // Remove existing column menu if present
-        for (java.awt.Component comp : contextMenu.getComponents()) {
-            if (comp instanceof JMenu && ((JMenu) comp).getText().equals("Columns")) {
-                contextMenu.remove(comp);
-                break;
-            }
-        }
-        contextMenu.add(buildColumnVisibilityMenu());
-    }
-
-    // Private helper for MainFrame GUI logic
     private static void styleScrollBar(javax.swing.JScrollBar bar) {
         bar.setUI(new javax.swing.plaf.metal.MetalScrollBarUI());
         bar.setBackground(PANEL_BLUE);
@@ -786,8 +593,7 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    /** Alternating blue-white rows and consistent readable table typography. */
-    private final class BlueTableRenderer extends javax.swing.table.DefaultTableCellRenderer {
+    private static final class BlueTableRenderer extends javax.swing.table.DefaultTableCellRenderer {
         @Override
         public java.awt.Component getTableCellRendererComponent(javax.swing.JTable table, Object value,
                 boolean isSelected, boolean hasFocus, int row, int column) {
@@ -797,7 +603,7 @@ public final class MainFrame extends JFrame {
             setBorder(BorderFactory.createEmptyBorder(4, 7, 4, 7));
             setForeground(NAVY_BLUE);
             setBackground(isSelected ? new Color(0xC5DFF3)
-                    : (rowStripingEnabled && row % 2 == 0 ? Color.WHITE : ALT_ROW_BLUE));
+                    : (row % 2 == 0 ? Color.WHITE : ALT_ROW_BLUE));
             if (column == 0 || column >= 2) {
                 setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
             } else {
@@ -807,7 +613,6 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // Private helper for MainFrame GUI logic
     private JPanel buildImagePanel() {
         imagePanel = new JPanel();
         imagePanel.setLayout(new BoxLayout(imagePanel, BoxLayout.Y_AXIS));
@@ -854,7 +659,6 @@ public final class MainFrame extends JFrame {
         imagePanel.add(imageInfoLabel);
         imagePanel.add(Box.createVerticalStrut(18));
 
-        // Preserve the existing PawTrack logo and its original image source.
         java.awt.Image logo = LoginPanel.loadLogo();
         if (logo != null) {
             LoginPanel.LogoLabel logoLabel = new LoginPanel.LogoLabel(logo);
@@ -868,51 +672,21 @@ public final class MainFrame extends JFrame {
         return imagePanel;
     }
 
-    // Private helper for MainFrame GUI logic
-    private JPanel buildStatusBar() {
-        JPanel statusBar = new JPanel(new BorderLayout());
-        statusBar.setBackground(PANEL_BLUE);
-        statusBar.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER_BLUE),
-                BorderFactory.createEmptyBorder(4, 12, 4, 12)));
-
-        statusLabel.setForeground(NAVY_BLUE);
-        statusLabel.setFont(BODY_FONT);
-        statusBar.add(statusLabel, BorderLayout.WEST);
-
-        connectionStatusLabel.setForeground(new Color(0x27AE60));
-        connectionStatusLabel.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
-        statusBar.add(connectionStatusLabel, BorderLayout.EAST);
-
-        // Start connection monitoring timer
-        javax.swing.Timer connectionTimer = new javax.swing.Timer(30000, e -> checkConnection());
-        connectionTimer.start();
-        checkConnection(); // Initial check
-
-        return statusBar;
-    }
-
-    private void checkConnection() {
-        try {
-            database.connection().isValid(2);
-            connectionStatusLabel.setText("● Connected");
-            connectionStatusLabel.setForeground(new Color(0x27AE60));
-        } catch (Exception e) {
-            connectionStatusLabel.setText("● Disconnected");
-            connectionStatusLabel.setForeground(new Color(0xE74C3C));
-        }
-    }
-
-    /** Displays the identity and role of the account that completed login. */
     private JPanel buildUserProfilePanel() {
-        JPanel profile = new JPanel();
-        profile.setLayout(new BoxLayout(profile, BoxLayout.Y_AXIS));
-        profile.setBackground(new Color(0xD8EAF7));
-        profile.setBorder(BorderFactory.createCompoundBorder(
+        profileCardLayout = new CardLayout();
+        userProfilePanel = new JPanel(profileCardLayout);
+        userProfilePanel.setOpaque(false);
+        userProfilePanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JPanel expandedProfile = new JPanel();
+        expandedProfile.setLayout(new BoxLayout(expandedProfile, BoxLayout.Y_AXIS));
+        expandedProfile.setBackground(new Color(0xD8EAF7));
+        expandedProfile.setBorder(BorderFactory.createCompoundBorder(
                 new RoundedUi.RoundedBorder(16, BORDER_BLUE, 1),
                 BorderFactory.createEmptyBorder(10, 12, 10, 12)));
-        profile.setAlignmentX(Component.CENTER_ALIGNMENT);
-        profile.setMaximumSize(new Dimension(270, 76));
+        expandedProfile.setAlignmentX(Component.CENTER_ALIGNMENT);
+        expandedProfile.setPreferredSize(new Dimension(240, 76));
+        expandedProfile.setMaximumSize(new Dimension(270, 76));
 
         JLabel caption = new JLabel("SIGNED IN AS");
         caption.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 10));
@@ -930,15 +704,28 @@ public final class MainFrame extends JFrame {
         role.setForeground(PRIMARY_BLUE);
         role.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        profile.add(caption);
-        profile.add(Box.createVerticalStrut(3));
-        profile.add(username);
-        profile.add(Box.createVerticalStrut(2));
-        profile.add(role);
-        return profile;
+        expandedProfile.add(caption);
+        expandedProfile.add(Box.createVerticalStrut(3));
+        expandedProfile.add(username);
+        expandedProfile.add(Box.createVerticalStrut(2));
+        expandedProfile.add(role);
+
+        JLabel compactIdentity = new JLabel("USER", javax.swing.SwingConstants.CENTER);
+        compactIdentity.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 9));
+        compactIdentity.setForeground(NAVY_BLUE);
+        compactIdentity.setOpaque(true);
+        compactIdentity.setBackground(new Color(0xD8EAF7));
+        compactIdentity.setBorder(new RoundedUi.RoundedBorder(14, BORDER_BLUE, 1));
+        compactIdentity.setPreferredSize(new Dimension(42, 42));
+        compactIdentity.setToolTipText("Signed in as " + user.getUsername() + " — " + roleText);
+
+        userProfilePanel.add(expandedProfile, "expanded");
+        userProfilePanel.add(compactIdentity, "compact");
+        userProfilePanel.setPreferredSize(new Dimension(240, 76));
+        userProfilePanel.setMaximumSize(new Dimension(270, 76));
+        return userProfilePanel;
     }
 
-    // Private helper for MainFrame GUI logic
     private JButton button(String text, Runnable action) {
         RoundedUi.RoundedButton button = new RoundedUi.RoundedButton(text, 18, PRIMARY_BLUE);
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -946,95 +733,19 @@ public final class MainFrame extends JFrame {
         button.setMinimumSize(new Dimension(225, 44));
         button.setMaximumSize(new Dimension(270, 44));
         button.setFont(BODY_FONT);
+        button.putClientProperty("fullText", text);
+        button.setToolTipText(text);
+        toolbarActionButtons.add(button);
         button.addActionListener(event -> action.run());
         return button;
     }
 
-    /** Creates a toolbar button with a tooltip. */
-    private JButton button(String text, Runnable action, String tooltip) {
-        RoundedUi.RoundedButton button = new RoundedUi.RoundedButton(text, 18, PRIMARY_BLUE)
-                .setTooltip(tooltip);
-        button.setAlignmentX(Component.CENTER_ALIGNMENT);
-        button.setPreferredSize(new Dimension(250, 44));
-        button.setMinimumSize(new Dimension(225, 44));
-        button.setMaximumSize(new Dimension(270, 44));
-        button.setFont(BODY_FONT);
-        button.addActionListener(event -> action.run());
-        return button;
-    }
-
-    /** Toggles between light and dark theme. */
-    private void toggleTheme() {
-        darkMode = !darkMode;
-        Color bg = darkMode ? new Color(0x1E1E1E) : PANEL_BLUE;
-        Color fg = darkMode ? Color.WHITE : NAVY_BLUE;
-        Color panelBg = darkMode ? new Color(0x2D2D2D) : PANEL_BLUE;
-        Color tableBg = darkMode ? new Color(0x3C3C3C) : TABLE_BLUE;
-        Color altRow = darkMode ? new Color(0x333333) : ALT_ROW_BLUE;
-        Color border = darkMode ? new Color(0x444444) : BORDER_BLUE;
-        Color toolbarBg = darkMode ? new Color(0x252525) : TOOLBAR_BLUE;
-
-        getContentPane().setBackground(bg);
-        setBackground(bg);
-        contentPanel.setBackground(bg);
-        toolbar.setBackground(toolbarBg);
-        imagePanel.setBackground(bg);
-        analyticsPanel.setBackground(bg);
-        logArea.setBackground(bg);
-        logArea.setForeground(fg);
-        statusBar.setBackground(bg);
-        statusLabel.setForeground(fg);
-        connectionStatusLabel.setForeground(fg);
-        animalTable.setBackground(tableBg);
-        animalTable.setForeground(fg);
-        animalTable.setGridColor(border);
-        animalTable.setSelectionBackground(darkMode ? new Color(0x555555) : new Color(0xC5DFF3));
-        animalTable.setSelectionForeground(fg);
-        imageLabel.setBackground(darkMode ? new Color(0x3C3C3C) : new Color(0xEAF3FA));
-        imageLabel.setForeground(fg);
-        imageInfoLabel.setForeground(fg);
-        previewCard.setBackground(darkMode ? new Color(0x2D2D2D) : new Color(0xF7FBFF));
-        userProfilePanel.setBackground(darkMode ? new Color(0x333333) : new Color(0xD8EAF7));
-        caption.setForeground(darkMode ? new Color(0xAAAAAA) : new Color(0x52738D));
-        username.setForeground(fg);
-        role.setForeground(PRIMARY_BLUE);
-        statusBar.setBackground(bg);
-        statusLabel.setForeground(fg);
-        classificationFilter.setBackground(darkMode ? new Color(0x3C3C3C) : new Color(0xF7FBFF));
-        classificationFilter.setForeground(fg);
-        progressBar.setForeground(darkMode ? new Color(0x4A90D9) : PRIMARY_BLUE);
-        spinner.stop(); // Reset spinner color
-        // Re-apply cell renderers
-        animalTable.setDefaultRenderer(Object.class, new BlueTableRenderer());
-        animalTable.setDefaultRenderer(Number.class, new BlueTableRenderer());
-        animalTable.repaint();
-        logArea.setCaretColor(fg);
-        myRecordsArea.setBackground(bg);
-        myRecordsArea.setForeground(fg);
-        waitlistTable.setBackground(tableBg);
-        waitlistTable.setForeground(fg);
-        statusPopup = null; // Force rebuild with new colors
-
-        // Update tab button colors
-        for (RoundedUi.RoundedButton btn : tabButtons) {
-            btn.setBaseColor(btn.getText().equals(tabNames.get(0)) ? TAB_SELECTED_COLOR : 
-                (darkMode ? new Color(0x3D3D3D) : TAB_COLOR));
-        }
-
-        repaint();
-        revalidate();
-    }
-
-    // ------------------------------------------------------------- actions
-
-    // Private helper for MainFrame GUI logic
     private void onRefreshAnimals() {
         classificationFilter.setSelectedIndex(0);
         refreshAnimals();
         statusLabel.setText("Loaded " + tableModel.getRowCount() + " animal(s)");
     }
 
-    // Private helper for MainFrame GUI logic
     private void onFilterByClassification() {
         Object selected = classificationFilter.getSelectedItem();
         String path = selected == null ? ALL_CLASSIFICATIONS : selected.toString();
@@ -1043,7 +754,6 @@ public final class MainFrame extends JFrame {
         statusLabel.setText("Filtered: " + path + " (" + matches.size() + " animal(s))");
     }
 
-    // Private helper for MainFrame GUI logic
     private void onImportCsv() {
         JFileChooser chooser = new JFileChooser(new File("data"));
         chooser.setDialogTitle("Select historical intake/adoption CSV");
@@ -1059,7 +769,6 @@ public final class MainFrame extends JFrame {
         progressBar.setValue(0);
         progressBar.setString("Importing...");
         statusLabel.setText("Importing " + path.getFileName() + " on a background thread...");
-        spinner.start();
 
         importController.importCsv(path,
                 value -> {
@@ -1067,7 +776,6 @@ public final class MainFrame extends JFrame {
                     progressBar.setString(value + "%");
                 },
                 result -> {
-                    spinner.stop();
                     progressBar.setString("Done");
                     statusLabel.setText(result.summary());
                     log("Import finished: " + result.summary());
@@ -1075,13 +783,11 @@ public final class MainFrame extends JFrame {
                     refreshAnalytics();
                 },
                 failure -> {
-                    spinner.stop();
                     progressBar.setString("Failed");
                     error("Import failed", failure);
                 });
     }
 
-    // Private helper for MainFrame GUI logic
     private void onRecordInterest() {
         Animal animal = selectedAnimal();
         if (animal == null) {
@@ -1109,7 +815,6 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // Private helper for MainFrame GUI logic
     private void configureStatusFilter() {
         javax.swing.table.JTableHeader header = animalTable.getTableHeader();
         header.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -1125,7 +830,6 @@ public final class MainFrame extends JFrame {
         statusColumn.setHeaderRenderer(new StatusHeaderRenderer());
     }
 
-    /** Header cell renderer for the Status column that shows a down-arrow icon. */
     private static final class StatusHeaderRenderer extends javax.swing.table.DefaultTableCellRenderer {
         StatusHeaderRenderer() {
             setOpaque(true);
@@ -1142,9 +846,7 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // Private helper for MainFrame GUI logic
     private void showStatusFilterMenu(java.awt.Component invoker, int x, int y) {
-        // Close any previously opened status panel first (prevents stacking).
         if (statusPopup != null) {
             statusPopup.setVisible(false);
             statusPopup.dispose();
@@ -1193,7 +895,6 @@ public final class MainFrame extends JFrame {
         dialog.setVisible(true);
     }
 
-    /** Rounded blue drop-down panel with a soft shadow (custom-painted). */
     private static final class StatusPopupPanel extends JPanel {
         StatusPopupPanel() {
             setOpaque(false);
@@ -1246,7 +947,6 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // Private helper for MainFrame GUI logic
     private void applyStatusFilter(String label) {
         javax.swing.table.TableRowSorter<javax.swing.table.TableModel> sorter =
                 (javax.swing.table.TableRowSorter<javax.swing.table.TableModel>) animalTable.getRowSorter();
@@ -1259,7 +959,6 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // Private helper for MainFrame GUI logic
     private void onAddAnimal() {
         Animal draft = showAnimalForm(null, "Add Animal");
         if (draft == null) {
@@ -1276,7 +975,6 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // Private helper for MainFrame GUI logic
     private void onEditAnimal() {
         Animal animal = selectedAnimal();
         if (animal == null) {
@@ -1298,7 +996,6 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // Private helper for MainFrame GUI logic
     private void onDeleteAnimal() {
         Animal animal = selectedAnimal();
         if (animal == null) {
@@ -1320,8 +1017,45 @@ public final class MainFrame extends JFrame {
             error("Could not delete animal", failure);
         }
     }
+    
+    private void onFulfillWaitlistRequest() {
+        int selectedRow = waitlistTable.getSelectedRow();
+        if (selectedRow < 0) {
+            info("Please select a request from the waitlist table first.");
+            return;
+        }
 
-    // Private helper for MainFrame GUI logic
+        // Get the exact request from the row the admin clicked
+        WaitlistController.WaitlistRequest request = displayedRequests.get(selectedRow);
+        Animal animal = request.animal();
+        Adopter adopter = request.adopter();
+
+        int confirm = JOptionPane.showConfirmDialog(this, 
+            "Finalize adoption of " + animal.getName() + " to " + adopter.getName() + "?\n" +
+            "This will mark the animal as ADOPTED and process the fee of $" + animal.adoptionFee(),
+            "Confirm Adoption", JOptionPane.YES_NO_OPTION);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            try {
+                // Process the adoption directly
+                adoptionController.markAdopted(animal, adopter);
+                waitlistController.pollNext(animal.getId()); // Clean up the waitlist
+
+                refreshAnimals();
+                refreshAnalytics();
+                refreshWaitlist();
+
+                String message = String.format("Successfully adopted %s to %s!", animal.getName(), adopter.getName());
+                log(message);
+                statusLabel.setText(message);
+                JOptionPane.showMessageDialog(this, message, "Success", JOptionPane.INFORMATION_MESSAGE);
+
+            } catch (SQLException | IllegalArgumentException failure) {
+                error("Could not fulfill waitlist request", failure);
+            }
+        }
+    }
+
     private Animal showAnimalForm(Animal existing, String title) {
         JTextField name = new JTextField(existing != null ? existing.getName() : "", 16);
         JComboBox<Species> species = new JComboBox<>(Species.values());
@@ -1365,7 +1099,6 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // Private helper for MainFrame GUI logic
     private JPanel buildWaitlistTab() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(PANEL_BLUE);
@@ -1399,7 +1132,37 @@ public final class MainFrame extends JFrame {
 
         JPanel top = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
         top.setOpaque(false);
-        top.add(button("Refresh Waitlist", this::refreshWaitlist));
+
+        // 1. BULLETPROOF REFRESH BUTTON (Ignores minimize logic)
+        RoundedUi.RoundedButton refreshBtn = new RoundedUi.RoundedButton("Refresh Waitlist", 18, PRIMARY_BLUE) {
+            @Override
+            public void setPreferredSize(Dimension preferredSize) {
+                super.setPreferredSize(new Dimension(160, 36)); // Lock size
+            }
+            @Override
+            public void setText(String text) {
+                super.setText("Refresh Waitlist"); // Lock text
+            }
+        };
+        refreshBtn.setFont(BODY_FONT);
+        refreshBtn.addActionListener(e -> refreshWaitlist());
+
+        // 2. BULLETPROOF FULFILL BUTTON (Ignores minimize logic)
+        RoundedUi.RoundedButton fulfillBtn = new RoundedUi.RoundedButton("Fulfill Selected Request", 18, PRIMARY_BLUE) {
+            @Override
+            public void setPreferredSize(Dimension preferredSize) {
+                super.setPreferredSize(new Dimension(210, 36)); // Lock size
+            }
+            @Override
+            public void setText(String text) {
+                super.setText("Fulfill Selected Request"); // Lock text
+            }
+        };
+        fulfillBtn.setFont(BODY_FONT);
+        fulfillBtn.addActionListener(e -> onFulfillWaitlistRequest());
+
+        top.add(refreshBtn);
+        top.add(fulfillBtn);
         panel.add(top, BorderLayout.NORTH);
 
         JScrollPane scroll = new JScrollPane(waitlistTable);
@@ -1408,15 +1171,12 @@ public final class MainFrame extends JFrame {
         panel.add(scroll, BorderLayout.CENTER);
         return panel;
     }
-
-    // Private helper for MainFrame GUI logic
     private void refreshWaitlist() {
-        if (waitlistModel == null) {
-            return;
-        }
+        if (waitlistModel == null) return;
         waitlistModel.setRowCount(0);
         try {
-            for (WaitlistController.WaitlistRequest req : waitlistController.getRequests()) {
+            displayedRequests = waitlistController.getRequests(); // Store them here
+            for (WaitlistController.WaitlistRequest req : displayedRequests) {
                 waitlistModel.addRow(new Object[]{
                         req.animal().getName() + " (" + req.animal().species().label() + ")",
                         req.adopter().getName(),
@@ -1430,8 +1190,6 @@ public final class MainFrame extends JFrame {
             error("Could not load the waitlist", failure);
         }
     }
-
-    // Private helper for MainFrame GUI logic
     private JPanel buildMyRecordsTab() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(PANEL_BLUE);
@@ -1446,7 +1204,6 @@ public final class MainFrame extends JFrame {
         return panel;
     }
 
-    // Private helper for MainFrame GUI logic
     private void refreshMyRecords() {
         if (myRecordsArea == null) {
             return;
@@ -1491,7 +1248,6 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // Private helper for MainFrame GUI logic
     private Adopter resolveMyAdopter() throws SQLException {
         if (user.getAdopterId() != null) {
             return adopterDao.findById(user.getAdopterId()).orElse(null);
@@ -1499,7 +1255,6 @@ public final class MainFrame extends JFrame {
         return adopterDao.findByNameOrEmail(user.getUsername()).orElse(null);
     }
 
-    // Private helper for MainFrame GUI logic
     private void onMarkAdopted() {
         Animal animal = selectedAnimal();
         if (animal == null) {
@@ -1533,7 +1288,6 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // Private helper for MainFrame GUI logic
     private void onUndo() {
         try {
             Optional<StatusChange> undone = adoptionController.undoLastStatus();
@@ -1550,7 +1304,6 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // Private helper for MainFrame GUI logic
     private void onFetchImage() {
         Animal animal = selectedAnimal();
         if (animal == null) {
@@ -1562,14 +1315,12 @@ public final class MainFrame extends JFrame {
         imageLabel.setIcon(null);
         imageLabel.setText("Loading...");
         imageInfoLabel.setText(" ");
-        spinner.start();
 
         String breed = animal.getBreed();
         ImageWorker worker = new ImageWorker(service, breed, (int) IMAGE_SIZE.getWidth());
         worker.addPropertyChangeListener(event -> {
             if ("state".equals(event.getPropertyName())
                     && event.getNewValue() == SwingWorker.StateValue.DONE) {
-                spinner.stop();
                 try {
                     ImageWorker.Result result = worker.get();
                     imageLabel.setText("");
@@ -1591,84 +1342,6 @@ public final class MainFrame extends JFrame {
         worker.execute();
     }
 
-    // ------------------------------------------------------------- helpers
-
-    /** Sets up keyboard shortcuts and mnemonics for the main window. */
-    private void setupKeyboardShortcuts() {
-        javax.swing.InputMap im = getRootPane().getInputMap(javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW);
-        javax.swing.ActionMap am = getRootPane().getActionMap();
-
-        // Ctrl+R: Refresh animals
-        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_DOWN_MASK), "refreshAnimals");
-        am.put("refreshAnimals", new javax.swing.AbstractAction() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                onRefreshAnimals();
-            }
-        });
-
-        // Ctrl+F: Focus classification filter
-        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F, java.awt.event.InputEvent.CTRL_DOWN_MASK), "focusFilter");
-        am.put("focusFilter", new javax.swing.AbstractAction() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                classificationFilter.requestFocusInWindow();
-            }
-        });
-
-        // Ctrl+I: Import CSV
-        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_I, java.awt.event.InputEvent.CTRL_DOWN_MASK), "importCsv");
-        am.put("importCsv", new javax.swing.AbstractAction() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                onImportCsv();
-            }
-        });
-
-        // Ctrl+U: Undo last status change
-        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_U, java.awt.event.InputEvent.CTRL_DOWN_MASK), "undo");
-        am.put("undo", new javax.swing.AbstractAction() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                onUndo();
-            }
-        });
-
-        // Ctrl+E: Export to CSV
-        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_E, java.awt.event.InputEvent.CTRL_DOWN_MASK), "exportCsv");
-        am.put("exportCsv", new javax.swing.AbstractAction() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                exportToCsv();
-            }
-        });
-
-        // F5: Refresh analytics
-        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F5, 0), "refreshAnalytics");
-        am.put("refreshAnalytics", new javax.swing.AbstractAction() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                refreshAnalytics();
-            }
-        });
-
-        // Escape: Close any open dialogs/popups
-        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0), "escape");
-        am.put("escape", new javax.swing.AbstractAction() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                if (statusPopup != null) {
-                    statusPopup.setVisible(false);
-                    statusPopup.dispose();
-                    statusPopup = null;
-                }
-            }
-        });
-    }
-
-    // ------------------------------------------------------------- helpers
-
-    // Private helper for MainFrame GUI logic
     private Animal selectedAnimal() {
         int viewRow = animalTable.getSelectedRow();
         if (viewRow < 0) {
@@ -1677,7 +1350,6 @@ public final class MainFrame extends JFrame {
         return tableModel.getAnimalAt(animalTable.convertRowIndexToModel(viewRow));
     }
 
-    // Private helper for MainFrame GUI logic
     private Adopter promptForAdopter(String title) {
         JTextField nameField = new JTextField(18);
         JTextField emailField = new JTextField(18);
@@ -1703,24 +1375,16 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // Private helper for MainFrame GUI logic
     private void refreshAnimals() {
         animalController.refresh();
         tableModel.setAnimals(animalController.getAnimals());
     }
 
-    // Private helper for MainFrame GUI logic
-    public User getUser() {
-        return user;
-    }
-
-    // Private helper for MainFrame GUI logic
     private void refreshAnalytics() {
         AnalyticsController.AnalyticsSnapshot snapshot = analyticsController.compute();
         analyticsPanel.showReport(snapshot.report(), snapshot.classCounts(), snapshot.totalWaiters());
     }
 
-    // Private helper for MainFrame GUI logic
     private void populateClassificationFilter() {
         classificationFilter.addItem(ALL_CLASSIFICATIONS);
         for (String path : classificationController.allPaths()) {
@@ -1728,7 +1392,6 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // Private helper for MainFrame GUI logic
     private void updateSelectedAnimalInfo() {
         Animal animal = selectedAnimal();
         if (animal == null) {
@@ -1739,110 +1402,31 @@ public final class MainFrame extends JFrame {
                 animal, animal.adoptionFee(), animal.careSchedule()));
     }
 
-    // Private helper for MainFrame GUI logic
     private void log(String message) {
         logArea.append(message + System.lineSeparator());
         logArea.setCaretPosition(logArea.getDocument().getLength());
     }
 
-    // Private helper for MainFrame GUI logic
     private void info(String message) {
         JOptionPane.showMessageDialog(this, message, "Information", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    // Private helper for MainFrame GUI logic
     private void warn(String message) {
         JOptionPane.showMessageDialog(this, message, "Warning", JOptionPane.WARNING_MESSAGE);
     }
 
-    // Private helper for MainFrame GUI logic
     private void error(String title, Exception failure) {
         log(title + ": " + failure.getMessage());
         JOptionPane.showMessageDialog(this, title + "\n" + failure.getMessage(), "Error",
                 JOptionPane.ERROR_MESSAGE);
     }
-
-    // Private helper for MainFrame GUI logic
-    private void exportToCsv() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Export Animals to CSV");
-        chooser.setFileFilter(new FileNameExtensionFilter("CSV Files", "csv"));
-        chooser.setSelectedFile(new File("animals_export_" + LocalDate.now() + ".csv"));
-        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
-            return;
-        }
-        File file = chooser.getSelectedFile();
-        if (!file.getName().toLowerCase().endsWith(".csv")) {
-            file = new File(file.getAbsolutePath() + ".csv");
-        }
-        try (java.io.PrintWriter writer = new java.io.PrintWriter(file)) {
-            writer.println("ID,Name,Species,Breed,Age (months),Gender,Status,Adoption Fee,Classification ID,Intake Date");
-            for (Animal animal : animalController.getAnimals()) {
-                writer.printf("%d,%s,%s,%s,%d,,%s,%.2f,%s,%s%n",
-                        animal.getId(),
-                        escapeCsv(animal.getName()),
-                        animal.species().label(),
-                        escapeCsv(animal.getBreed()),
-                        animal.getAgeMonths(),
-                        animal.getStatus().label(),
-                        animal.adoptionFee(),
-                        animal.getClassificationId() != null ? animal.getClassificationId() : "",
-                        animal.getIntakeDate());
+    
+    private void loadWaitlists() {
+        try {
+            for (WaitlistDao.Entry entry : waitlistDao.loadAll()) {
+                adopterDao.findById(entry.adopterId())
+                        .ifPresent(adopter -> waitlist.addInterest(entry.animalId(), adopter));
             }
-            statusLabel.setText("Exported " + animalController.getAnimals().size() + " animals to " + file.getName());
-            info("Successfully exported " + animalController.getAnimals().size() + " animals to:\n" + file.getAbsolutePath());
-        } catch (Exception ex) {
-            error("Export failed", ex);
-        }
-    }
-
-    private String escapeCsv(String value) {
-        if (value == null) {
-            return "";
-        }
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
-        }
-        return value;
-    }
-
-    // Private helper for MainFrame GUI logic
-    private void showColumnVisibilityDialog() {
-        JDialog dialog = new JDialog(this, "Column Visibility", true);
-        dialog.setLayout(new BorderLayout());
-        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
-
-        String[] columnNames = {"ID", "Name", "Species", "Breed", "Age", "Gender", "Status", "Fee", "Classification", "Intake"};
-        for (int i = 0; i < columnNames.length && i < animalTable.getColumnCount(); i++) {
-            JCheckBox check = new JCheckBox(columnNames[i]);
-            check.setSelected(animalTable.getColumnModel().getColumn(i).getWidth() > 0);
-            final int colIdx = i;
-            check.addActionListener(e -> {
-                javax.swing.table.TableColumn column = animalTable.getColumnModel().getColumn(colIdx);
-                column.setMinWidth(check.isSelected() ? 50 : 0);
-                column.setMaxWidth(check.isSelected() ? Integer.MAX_VALUE : 0);
-                column.setWidth(check.isSelected() ? 100 : 0);
-                column.setPreferredWidth(check.isSelected() ? 100 : 0);
-            });
-            panel.add(check);
-        }
-
-        JScrollPane scroll = new JScrollPane(panel);
-        scroll.setPreferredSize(new Dimension(220, 300));
-        dialog.add(scroll, BorderLayout.CENTER);
-
-        JButton closeBtn = new JButton("Close");
-        closeBtn.addActionListener(e -> dialog.dispose());
-        JPanel btnPanel = new JPanel();
-        btnPanel.add(closeBtn);
-        dialog.add(btnPanel, BorderLayout.SOUTH);
-
-        dialog.pack();
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
+        } catch (SQLException ignored) {}
     }
 }

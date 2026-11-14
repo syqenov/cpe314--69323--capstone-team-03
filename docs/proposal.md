@@ -25,6 +25,7 @@ PawTrack (Pet Shelter & Adoption Tracker) is a Java-based desktop application de
 <br> 
 
 ## 2. Entity-Relationship Sketch
+![Priliminary ERD](./erd.png)
 
 ### Entity Attributes
 
