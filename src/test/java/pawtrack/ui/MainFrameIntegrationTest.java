@@ -38,6 +38,10 @@ class MainFrameIntegrationTest {
     private MainFrame frame;
     private User testUser;
     private Database mockDatabase;
+    
+    public User getUser() {
+        return getUser();
+    }
 
     @BeforeEach
     void setUp() throws Exception {
