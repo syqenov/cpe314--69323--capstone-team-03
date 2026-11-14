@@ -68,7 +68,7 @@ This section records the team's Week 8 plan. It was superseded by the finalized 
 
 ### 2.1 Preliminary ER sketch
 
-![Figure 1](figures/figure1-preliminary-er-sketch.png)
+![Figure 1](erd.png)
 
 *Figure 1: Preliminary ER sketch from the Week 8 proposal (five entities; the self-reference on Classification represents the taxonomy tree).*
 
@@ -116,13 +116,7 @@ This section records the team's Week 8 plan. It was superseded by the finalized 
 
 The animal model is an abstract `Animal` class with two concrete subclasses, `Dog` and `Cat`, plus the `Species` and `AnimalStatus` enumerations. Image retrieval is a second hierarchy: the `PetImageService` interface with two implementations, selected by `PetImageServiceFactory`. Polymorphism is exercised at runtime: the rest of the program calls `adoptionFee()`, `careSchedule()`, and `isSenior()` through `Animal` references, and calls `fetchRandomImage()` through `PetImageService`, without checking the concrete type.
 
-![Figure 2a](figures/figure2a-class-hierarchy-animals.png)
-
-*Figure 2a: Animal class hierarchy: abstract Animal, its Dog and Cat subclasses, and the Species and AnimalStatus enumerations.*
-
-![Figure 2b](figures/figure2b-class-hierarchy-image-api.png)
-
-*Figure 2b: Image-service hierarchy: the PetImageService interface, its two API implementations, and PetImageServiceFactory.*
+![Figure 2a](class-hierarchy.png)
 
 ### 3.2 Single Responsibility Principle Justification Table
 
@@ -207,7 +201,7 @@ Responsibilities are split by layer. DAO classes (one per table) run SQL with pr
 
 ### 4.1 ER Diagram
 
-![Figure 3](figures/figure3-final-erd.png)
+![Figure 3](er-diagram.jpg)
 
 *Figure 3: Finalized ERD (six tables). PK = primary key, FK = foreign key, NN = NOT NULL. A crow's foot marks the "many" side; a circle marks an optional link.*
 
