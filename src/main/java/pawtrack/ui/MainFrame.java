@@ -135,6 +135,7 @@ public final class MainFrame extends JFrame {
     private final java.util.List<RoundedUi.RoundedButton> tabButtons = new java.util.ArrayList<>();
     private final java.util.List<String> tabNames = new java.util.ArrayList<>();
     private JPanel toolbar;
+    private JScrollPane toolbarScroll;
     private JPanel imagePanel;
     private boolean toolbarMinimized = false;
     private javax.swing.JDialog statusPopup;
@@ -235,7 +236,7 @@ public final class MainFrame extends JFrame {
         toolbarHolder.setOpaque(false);
         toolbarHolder.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 12));
         toolbarHolder.add(buildToolbar(), BorderLayout.CENTER);
-        JScrollPane toolbarScroll = new JScrollPane(toolbarHolder,
+        toolbarScroll = new JScrollPane(toolbarHolder,
                 JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         toolbarScroll.setBorder(null);
         toolbarScroll.getViewport().setBackground(TOOLBAR_BLUE);
@@ -514,17 +515,6 @@ public final class MainFrame extends JFrame {
         progressBar.setAlignmentX(Component.CENTER_ALIGNMENT);
         toolbar.add(progressBar);
 
-        // Export to CSV button
-        RoundedUi.RoundedButton exportButton = new RoundedUi.RoundedButton("Export CSV", 18, new Color(0x5D8AA8))
-                .setTooltip("Export animals to CSV (Ctrl+E)");
-        exportButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        exportButton.setPreferredSize(new Dimension(120, 36));
-        exportButton.setMinimumSize(new Dimension(100, 36));
-        exportButton.setMaximumSize(new Dimension(140, 36));
-        exportButton.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
-        exportButton.addActionListener(e -> exportToCsv());
-        toolbar.add(exportButton);
-
         // Theme toggle button
         RoundedUi.RoundedButton themeButton = new RoundedUi.RoundedButton(darkMode ? "☀ Light" : "🌙 Dark", 18, new Color(0x5D8AA8))
                 .setTooltip("Toggle dark/light theme (Ctrl+T)");
@@ -604,8 +594,21 @@ public final class MainFrame extends JFrame {
                 pb.revalidate();
             }
         }
+        // Adjust the overall toolbar width
+        int newWidth = toolbarMinimized ? miniW + 20 : fullW + 20;
+        toolbar.setPreferredSize(new Dimension(newWidth, toolbar.getPreferredSize().height));
+        toolbar.setMinimumSize(new Dimension(newWidth, 0));
+        toolbar.setMaximumSize(new Dimension(newWidth, Integer.MAX_VALUE));
         toolbar.revalidate();
         toolbar.repaint();
+        // Also adjust the scroll pane width
+        if (toolbarScroll != null) {
+            toolbarScroll.setPreferredSize(new Dimension(newWidth, toolbarScroll.getPreferredSize().height));
+            toolbarScroll.setMinimumSize(new Dimension(newWidth, 0));
+            toolbarScroll.setMaximumSize(new Dimension(newWidth, Integer.MAX_VALUE));
+            toolbarScroll.revalidate();
+            toolbarScroll.repaint();
+        }
         // Re-layout the frame so the scroll pane / west region reflects the new width.
         getContentPane().revalidate();
         getContentPane().repaint();
@@ -1634,15 +1637,6 @@ public final class MainFrame extends JFrame {
             }
         });
 
-        // Ctrl+E: Export to CSV
-        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_E, java.awt.event.InputEvent.CTRL_DOWN_MASK), "exportCsv");
-        am.put("exportCsv", new javax.swing.AbstractAction() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                exportToCsv();
-            }
-        });
-
         // F5: Refresh analytics
         im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F5, 0), "refreshAnalytics");
         am.put("refreshAnalytics", new javax.swing.AbstractAction() {
@@ -1760,50 +1754,6 @@ public final class MainFrame extends JFrame {
         log(title + ": " + failure.getMessage());
         JOptionPane.showMessageDialog(this, title + "\n" + failure.getMessage(), "Error",
                 JOptionPane.ERROR_MESSAGE);
-    }
-
-    // Private helper for MainFrame GUI logic
-    private void exportToCsv() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Export Animals to CSV");
-        chooser.setFileFilter(new FileNameExtensionFilter("CSV Files", "csv"));
-        chooser.setSelectedFile(new File("animals_export_" + LocalDate.now() + ".csv"));
-        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
-            return;
-        }
-        File file = chooser.getSelectedFile();
-        if (!file.getName().toLowerCase().endsWith(".csv")) {
-            file = new File(file.getAbsolutePath() + ".csv");
-        }
-        try (java.io.PrintWriter writer = new java.io.PrintWriter(file)) {
-            writer.println("ID,Name,Species,Breed,Age (months),Gender,Status,Adoption Fee,Classification ID,Intake Date");
-            for (Animal animal : animalController.getAnimals()) {
-                writer.printf("%d,%s,%s,%s,%d,,%s,%.2f,%s,%s%n",
-                        animal.getId(),
-                        escapeCsv(animal.getName()),
-                        animal.species().label(),
-                        escapeCsv(animal.getBreed()),
-                        animal.getAgeMonths(),
-                        animal.getStatus().label(),
-                        animal.adoptionFee(),
-                        animal.getClassificationId() != null ? animal.getClassificationId() : "",
-                        animal.getIntakeDate());
-            }
-            statusLabel.setText("Exported " + animalController.getAnimals().size() + " animals to " + file.getName());
-            info("Successfully exported " + animalController.getAnimals().size() + " animals to:\n" + file.getAbsolutePath());
-        } catch (Exception ex) {
-            error("Export failed", ex);
-        }
-    }
-
-    private String escapeCsv(String value) {
-        if (value == null) {
-            return "";
-        }
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
-        }
-        return value;
     }
 
     // Private helper for MainFrame GUI logic
