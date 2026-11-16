@@ -137,10 +137,12 @@ public final class MainFrame extends JFrame {
     private final JTable animalTable = new JTable(tableModel);
     // Private helper for MainFrame GUI logic
     private final JTextArea logArea = new JTextArea();
+    private final PawTrackActivityLogPanel activityLogPanel = new PawTrackActivityLogPanel();
     private JTextArea myRecordsArea;
     private MyRecordsPanel myRecordsPanel;
     private javax.swing.table.DefaultTableModel waitlistModel;
     private JTable waitlistTable;
+    private WaitlistPanel waitlistPanel;
     private CardLayout cardLayout;
     private String currentTab;
     private JPanel contentPanel;
@@ -295,6 +297,7 @@ public final class MainFrame extends JFrame {
         dashboardPanel = new PawTrackDashboard(user.getRole() == Role.STAFF, user.getUsername(),
                 () -> selectTab("Animals"), () -> selectTab("My Records"),
                 () -> selectTab("Waitlist Requests"));
+        dashboardPanel.setAnalyticsNavigation(() -> selectTab("Shelter Analytics"));
         addTabButton("Dashboard", dashboardPanel);
         addTabButton("Animals", buildAnimalTab());
         analyticsPanel.setBackground(PANEL_BLUE);
@@ -303,12 +306,8 @@ public final class MainFrame extends JFrame {
             addTabButton("Shelter Analytics", analyticsPanel);
         }
         if (user.getRole() == Role.STAFF) {
-            logArea.setBackground(PANEL_BLUE);
-            logArea.setOpaque(true);
-            JScrollPane activityScroll = new JScrollPane(logArea);
-            activityScroll.getViewport().setBackground(PANEL_BLUE);
-            styleScrollBar(activityScroll.getVerticalScrollBar());
-            addTabButton("Activity Log", activityScroll);
+            // Dedicated staff Activity Log UI; legacy logArea remains for compatibility.
+            addTabButton("Activity Log", activityLogPanel);
             addTabButton("Waitlist Requests", buildWaitlistTab());
             addTabButton("Application History", new ApplicationHistoryPanel(
                     new pawtrack.service.ApplicationHistoryService(sessionAuth, database)));
@@ -1513,6 +1512,7 @@ public final class MainFrame extends JFrame {
                 button("Complete Selected Adoption", this::onCompleteReserved),
                 button("Cancel Reservation", this::onCancelReservation),
                 scroll -> styleScrollBar(scroll.getVerticalScrollBar()), this::onViewApplication);
+        waitlistPanel = panel;
         waitlistModel = panel.getTableModel();
         waitlistTable = panel.getTable();
         return panel;
@@ -1545,6 +1545,9 @@ public final class MainFrame extends JFrame {
                         req.position(),
                         review
                 });
+                if (waitlistPanel != null) {
+                    waitlistPanel.registerAnimalForRow(waitlistModel.getRowCount() - 1, req.animal());
+                }
             }
             statusLabel.setText("Waitlist: " + waitlistModel.getRowCount() + " request(s)");
         } catch (SQLException failure) {
@@ -2150,6 +2153,7 @@ public final class MainFrame extends JFrame {
     private void log(String message) {
         logArea.append(message + System.lineSeparator());
         logArea.setCaretPosition(logArea.getDocument().getLength());
+        activityLogPanel.appendEvent(message);
     }
 
     // Private helper for MainFrame GUI logic
