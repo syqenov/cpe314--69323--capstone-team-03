@@ -40,6 +40,18 @@ public final class AdopterDao {
         throw new SQLException("Failed to insert adopter: " + adopter.getName());
     }
 
+    /** Updates only the account-linked adopter row. Ownership is enforced by the caller. */
+    public void updateContact(int adopterId, String name, String email, String phone) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "UPDATE adopter SET name = ?, email = ?, phone = ? WHERE id = ?")) {
+            ps.setString(1, name);
+            ps.setString(2, email);
+            ps.setString(3, phone);
+            ps.setInt(4, adopterId);
+            if (ps.executeUpdate() != 1) throw new SQLException("Adopter profile was not found");
+        }
+    }
+
     public Optional<Adopter> findByEmail(String email) throws SQLException {
         String sql = "SELECT * FROM adopter WHERE lower(email) = lower(?)";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
