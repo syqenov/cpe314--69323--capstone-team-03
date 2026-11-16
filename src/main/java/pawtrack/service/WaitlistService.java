@@ -90,6 +90,15 @@ public final class WaitlistService {
         return total;
     }
 
+    /** Removes a specific adopter without changing the order of other applicants. */
+    public boolean removeInterest(int animalId, int adopterId) {
+        Deque<Adopter> queue = waitlists.get(animalId);
+        if (queue == null) return false;
+        boolean removed = queue.removeIf(a -> a.getId() == adopterId);
+        if (queue.isEmpty()) waitlists.remove(animalId);
+        return removed;
+    }
+
     public void clear(int animalId) {
         waitlists.remove(animalId);
     }
@@ -97,7 +106,8 @@ public final class WaitlistService {
     private int indexOf(Deque<Adopter> queue, Adopter adopter) {
         int index = 0;
         for (Adopter queued : queue) {
-            if (queued.getEmail().equalsIgnoreCase(adopter.getEmail())) {
+            if ((queued.getId() > 0 && adopter.getId() > 0 && queued.getId() == adopter.getId())
+                    || queued.getEmail().equalsIgnoreCase(adopter.getEmail())) {
                 return index;
             }
             index++;

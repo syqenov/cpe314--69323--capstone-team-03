@@ -3,12 +3,14 @@ package pawtrack.controller;
 import pawtrack.dao.AdopterDao;
 import pawtrack.dao.AdoptionRecordDao;
 import pawtrack.dao.AnimalDao;
+import pawtrack.dao.Database;
 import pawtrack.model.Adopter;
 import pawtrack.model.AdoptionRecord;
 import pawtrack.model.Animal;
 import pawtrack.model.AnimalStatus;
 import pawtrack.model.StatusChange;
 import pawtrack.service.StatusHistoryService;
+import pawtrack.service.AdoptionTransactionService;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -26,7 +28,14 @@ public final class AdoptionController {
     private final AdoptionRecordDao recordDao;
     private final StatusHistoryService history;
     private final AuthController auth;
+    private final AdoptionTransactionService adoptionTransactions;
+    private final Database database;
 
+    /**
+     * Legacy constructor retained for read-only callers and existing tests.
+     * Completing an adoption requires the database-aware constructor below.
+     */
+    @Deprecated
     public AdoptionController(AnimalDao animalDao, AdopterDao adopterDao, AdoptionRecordDao recordDao,
                               StatusHistoryService history, AuthController auth) {
         this.animalDao = animalDao;
@@ -34,6 +43,20 @@ public final class AdoptionController {
         this.recordDao = recordDao;
         this.history = history;
         this.auth = auth;
+        this.adoptionTransactions = null;
+        this.database = null;
+    }
+
+    public AdoptionController(Database database, AnimalDao animalDao, AdopterDao adopterDao,
+                              AdoptionRecordDao recordDao, StatusHistoryService history, AuthController auth) {
+        this.animalDao = animalDao;
+        this.adopterDao = adopterDao;
+        this.recordDao = recordDao;
+        this.history = history;
+        this.auth = auth;
+        this.adoptionTransactions = new AdoptionTransactionService(database, animalDao, adopterDao,
+                recordDao, history);
+        this.database = database;
     }
 
     /**
@@ -44,19 +67,46 @@ public final class AdoptionController {
         if (auth != null) {
             auth.requireStaff();
         }
-        Adopter persisted = adopterDao.findOrCreate(adopter);
-        AdoptionRecord record = new AdoptionRecord(animal.getId(), persisted.getId(), LocalDate.now(),
-                animal.adoptionFee());
-        recordDao.insert(record);
-        AnimalStatus previous = animal.getStatus();
-        animal.setStatus(AnimalStatus.ADOPTED);
-        animalDao.updateStatus(animal.getId(), AnimalStatus.ADOPTED);
-        history.record(animal.getId(), previous, AnimalStatus.ADOPTED);
-        return record;
+        if (adoptionTransactions == null) {
+            throw new IllegalStateException("A database-aware adoption controller is required");
+        }
+        return adoptionTransactions.complete(animal, adopter);
+    }
+
+    /**
+     * Staff completes an existing reservation using stored animal and adopter IDs.
+     * No free-text adopter data is accepted from the UI.
+     */
+    public AdoptionRecord completeReserved(int animalId) throws SQLException {
+        if (auth == null) {
+            throw new IllegalStateException("An authenticated staff session is required");
+        }
+        auth.requireStaff();
+        if (adoptionTransactions == null) {
+            throw new IllegalStateException("A database-aware adoption controller is required");
+        }
+        pawtrack.dao.ReservationDao reservations =
+                new pawtrack.dao.ReservationDao(database);
+        reservations.expireDue(java.time.LocalDateTime.now());
+        var active = reservations.activeForAnimal(animalId)
+                .orElseThrow(() -> new IllegalStateException("No active reservation for this animal"));
+        Animal animal = animalDao.findById(animalId)
+                .orElseThrow(() -> new SQLException("Animal not found"));
+        Adopter adopter = adopterDao.findById(active.adopterId())
+                .orElseThrow(() -> new SQLException("Reserved adopter not found"));
+        return adoptionTransactions.completeReserved(animal, adopter);
     }
 
     /** Reverts the most recent status change; returns the undone change if any. */
     public Optional<StatusChange> undoLastStatus() throws SQLException {
+        if (auth != null) {
+            auth.requireStaff();
+        }
+        // Undoing ADOPTED without reversing the adoption record would corrupt
+        // the application state. A dedicated reversal workflow is required.
+        if (history.peekMostRecent().filter(change -> change.to() == AnimalStatus.ADOPTED).isPresent()) {
+            throw new SQLException("Completed adoptions cannot be undone using status history");
+        }
         Optional<StatusChange> undone = history.undo();
         if (undone.isPresent()) {
             StatusChange change = undone.get();
@@ -67,6 +117,9 @@ public final class AdoptionController {
 
     /** All adoption records for a specific adopter. */
     public List<AdoptionRecord> findAdoptionsByAdopterId(int adopterId) throws SQLException {
+        if (auth != null) {
+            auth.requireAdopterOwnership(adopterId);
+        }
         return recordDao.findByAdopterId(adopterId);
     }
 

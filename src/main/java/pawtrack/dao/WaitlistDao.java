@@ -26,8 +26,8 @@ public final class WaitlistDao {
     }
 
     public int insert(int animalId, int adopterId, LocalDateTime requestedAt, int position) throws SQLException {
-        String sql = "INSERT OR REPLACE INTO waitlist_entry (animal_id, adopter_id, requested_at, position) "
-                + "VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO waitlist_entry (animal_id, adopter_id, requested_at, position) "
+                + "VALUES (?, ?, ?, ?) ON CONFLICT(animal_id, adopter_id) DO NOTHING";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, animalId);
             ps.setInt(2, adopterId);
@@ -50,6 +50,39 @@ public final class WaitlistDao {
         try (PreparedStatement ps = connection.prepareStatement("DELETE FROM waitlist_entry WHERE animal_id = ?")) {
             ps.setInt(1, animalId);
             return ps.executeUpdate();
+        }
+    }
+
+    /**
+     * Removes exactly one queue entry and shifts later positions down. Both SQL
+     * changes are committed together, so a failed update cannot leave a gap.
+     * The caller must update its in-memory FIFO only after this succeeds.
+     */
+    public boolean removeAndShift(int animalId, int adopterId, int position) throws SQLException {
+        if (!connection.getAutoCommit()) {
+            throw new SQLException("Waitlist update requires an available database transaction");
+        }
+        connection.setAutoCommit(false);
+        try {
+            int removed = delete(animalId, adopterId);
+            if (removed == 0) {
+                connection.rollback();
+                return false;
+            }
+            String sql = "UPDATE waitlist_entry SET position = position - 1 "
+                    + "WHERE animal_id = ? AND position > ?";
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                ps.setInt(1, animalId);
+                ps.setInt(2, position);
+                ps.executeUpdate();
+            }
+            connection.commit();
+            return true;
+        } catch (SQLException | RuntimeException failure) {
+            connection.rollback();
+            throw failure;
+        } finally {
+            connection.setAutoCommit(true);
         }
     }
 
