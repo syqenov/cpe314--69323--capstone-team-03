@@ -81,7 +81,28 @@
 	                        + "requested_at TEXT NOT NULL,"
 	                        + "position INTEGER NOT NULL,"
 	                        + "UNIQUE(animal_id, adopter_id))",
-	                "CREATE TABLE IF NOT EXISTS users ("
+	                "CREATE TABLE IF NOT EXISTS adoption_reservation ("
+                        + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                        + "animal_id INTEGER NOT NULL REFERENCES animal(id) ON DELETE CASCADE,"
+                        + "adopter_id INTEGER NOT NULL REFERENCES adopter(id) ON DELETE CASCADE,"
+                        + "reserved_at TEXT NOT NULL,"
+                        + "expires_at TEXT NOT NULL,"
+                        + "status TEXT NOT NULL CHECK(status IN ('ACTIVE','COMPLETED','CANCELLED','EXPIRED')))",
+                "CREATE UNIQUE INDEX IF NOT EXISTS only_one_active_reservation "
+                        + "ON adoption_reservation(animal_id) WHERE status = 'ACTIVE'",
+                "CREATE TABLE IF NOT EXISTS application_review ("
+                        + "animal_id INTEGER NOT NULL REFERENCES animal(id) ON DELETE CASCADE,"
+                        + "adopter_id INTEGER NOT NULL REFERENCES adopter(id) ON DELETE CASCADE,"
+                        + "status TEXT NOT NULL CHECK(status IN ('UNDER_REVIEW','APPROVED')) ,"
+                        + "staff_note TEXT NOT NULL DEFAULT '',"
+                        + "updated_at TEXT NOT NULL,"
+                        + "PRIMARY KEY(animal_id, adopter_id))",
+                "CREATE TABLE IF NOT EXISTS notification_read ("
+                        + "user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+                        + "reservation_id INTEGER NOT NULL REFERENCES adoption_reservation(id) ON DELETE CASCADE,"
+                        + "status TEXT NOT NULL,"
+                        + "PRIMARY KEY(user_id, reservation_id, status))",
+                "CREATE TABLE IF NOT EXISTS users ("
 	                        + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
 	                        + "username TEXT NOT NULL UNIQUE,"
 	                        + "password_hash TEXT NOT NULL,"
