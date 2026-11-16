@@ -64,6 +64,15 @@ public final class AnimalDao {
         }
     }
 
+    /** Updates the animal to ADOPTED only when it is not already adopted. */
+    public boolean updateStatusIfNotAdopted(int animalId) throws SQLException {
+        String sql = "UPDATE animal SET status = 'ADOPTED' WHERE id = ? AND status <> 'ADOPTED'";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, animalId);
+            return ps.executeUpdate() == 1;
+        }
+    }
+
     /** Updates the editable animal details (everything except status/classification). */
     public boolean updateDetails(int animalId, String name, String breed, int ageMonths, LocalDate intakeDate)
             throws SQLException {
