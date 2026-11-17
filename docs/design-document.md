@@ -355,80 +355,77 @@ The response contains the image URL in the `message` field, which is used to ret
 ]
 ```
 
-The response contains an image URL and associated metadata. PawTrack extracts the image URL and processes the available breed information for display.
-
 ## 6. Concurrency Design
 
-PawTrack uses Java Swing's `SwingWorker` to run long operations on background threads, so the Event Dispatch Thread (EDT), which handles clicks and repainting, is not blocked.
+PawTrack uses Java Swing's `SwingWorker` to perform long-running operations on background threads, reducing the risk of blocking the Event Dispatch Thread (EDT), which handles user interactions and graphical interface updates. Background processing is applied to operations such as CSV importing and external pet image retrieval, allowing the interface to remain responsive while these tasks execute.
 
 ### 6.1 Background Operations
 
-**Table 13: Background operations and threading approach**
+**Table 17. Background Operations and Threading Approach**
 
-| Operation | Background worker | Threading approach |
+| Operation | Background Worker | Threading Approach |
 |---|---|---|
-| Bulk CSV import | `SwingWorker` created in `ImportController.importCsv()` (`ImportWorker` is an equivalent stand-alone class) | `doInBackground()` calls `CsvImportService.importFile()`, which reads and validates each row and saves animals, adopters, and adoption records to SQLite in one transaction (committed at the end, rolled back on failure). Progress is reported as a percentage every 250 rows. `done()` runs on the EDT and reads the result with `get()`. |
-| Pet image retrieval | `ImageWorker` | `SwingWorker<ImageWorker.Result, Void>`. `doInBackground()` asks the `PetImageService` for an image URL, downloads the image bytes, and scales the image. The GUI listens for the worker's `DONE` state. |
-| Analytics refresh | None (runs on the EDT) | `AnalyticsController.compute()` reads the local SQLite data and makes one in-memory pass. It runs after data changes, when Refresh Analytics is clicked, and with F5. |
+| Bulk CSV Import | `SwingWorker` coordinated by `ImportController` | The background task calls `CsvImportService` to read, validate, and import CSV records into SQLite. Progress is reported during processing, while completion and error notifications are handled on the EDT. |
+| Pet Image Retrieval | `ImageWorker` | The `doInBackground()` method requests an image URL through `PetImageService`, downloads the image, and processes it outside the EDT. The resulting image is displayed after the worker completes. |
+| Analytics Refresh | None for direct analytics refresh; dashboard refresh uses `SwingWorker`. | Direct analytics refresh calls `AnalyticsController.compute()` synchronously, normally on the EDT. Dashboard statistics are also calculated through a separate background `SwingWorker`. Further improvement may be needed to ensure all analytics refresh operations remain responsive. |
 
-![Figure 4](figure4-threading.png)
+![PawTrack Concurrency Workflow](./concurrency-workflow.png)
 
-*Figure 4: Which steps run on the EDT (blue) and which on a worker thread (orange) for CSV import and image retrieval.*
+*Figure 6.1. Concurrency workflow showing background processing and Event Dispatch Thread (EDT) updates during CSV importing and pet image retrieval.*
 
 ### 6.2 How the Background Work Runs
 
-The import is the longest operation. The worker computes the percentage from the number of rows processed and the number of lines in the file, and reports it every 250 rows. The image worker makes two network calls, one for the image URL and one for the image itself, and neither runs on the EDT.
+For CSV importing, a background worker executes the import process without blocking the graphical interface. `CsvImportService` processes the records, validates their contents, and performs the required database operations. Progress information is reported during execution, and the completion handler retrieves the result and updates the interface on the EDT.
+
+For pet image retrieval, `ImageWorker` performs the external API request and downloads the image on a background thread. After the operation completes, the application updates the corresponding image display and status information. This separation prevents network delays from directly blocking the interface.
 
 ### 6.3 Keeping the UI Responsive
 
-- **While an import runs:** the status bar says the import is running on a background thread, and the progress bar shows the percentage.
-- **When a worker finishes:** for an import, the GUI reads the result, shows the summary in the status bar and the Activity Log, then refreshes the animal table and the analytics. For an image, it shows the picture, the provider, and the breed.
-- **If a worker fails:** the GUI shows an "Import failed" message or "Image unavailable", and the application continues.
+PawTrack separates background processing from graphical interface updates to improve responsiveness. While a background task executes, the interface can continue repainting and processing user interactions. Progress indicators and status messages provide feedback about ongoing operations.
 
-Because the long work runs off the EDT, the window keeps repainting and accepting clicks during an import or an image download.
-
----
+When a worker completes, its result is handled on the EDT, allowing Swing components to be updated safely. If an operation fails, the application reports the error without requiring the entire system to close. This approach improves the usability of PawTrack when processing CSV records or retrieving images from external APIs.
 
 ## 7. Data Mining & Visualization Design
 
-PawTrack uses `AnalyticsService` to analyze the animal and adoption records stored in the SQLite database. It performs frequency analysis to find the most adopted species and breeds, calculates average shelter stay, and aggregates adoption counts through the classification hierarchy. The results are returned as an `AnalyticsReport` and shown on the analytics dashboard. The sample intake log in `data/intake_history.csv` contains 6,000 records, so the charts reflect real volumes of data.
+PawTrack uses `AnalyticsService` to analyze animal and adoption records stored in the local SQLite database. The system performs frequency analysis to identify the most adopted species and breeds, calculates average shelter stay durations, and aggregates adoption counts through the classification hierarchy. The results are organized into an `AnalyticsReport` and presented through the application's analytics dashboard.
 
 ### 7.1 Data Mining and Aggregation
 
-The service matches each completed adoption record with its animal, groups and counts the records by species and breed, calculates stay durations, and performs a recursive roll-up through the classification tree.
+The system processes animal and completed adoption records to calculate adoption frequencies, shelter stay durations, and classification-based adoption totals. These operations provide shelter staff with summaries of adoption activity and animal management trends.
 
-**Table 14: Data mining and aggregation operations**
+**Table 18. Data Mining and Aggregation Operations**
 
-| Analysis | Aggregation method | Purpose |
+| Analysis | Aggregation Method | Purpose |
 |---|---|---|
-| Adoptions by Species | Counts completed adoption records for each species and sorts from highest to lowest (name breaks ties). | Identifies the species with the most adoptions. |
-| Adoptions by Breed | Counts completed adoption records for each breed and ranks them by frequency. | Identifies the most adopted breeds. |
-| Average Shelter Stay | Calculates the days between an animal's intake date and adoption date (negative values from bad data count as 0), then computes the overall and per-species averages. | Shows how long animals usually stay before adoption. |
-| Adoptions by Classification | Recursively counts animals with status ADOPTED under each classification node, including all descendant nodes. | Gives adoption totals across the classification hierarchy. |
-
-![Figure 5](figure5-data-mining-flow.png)
-
-*Figure 5: Data flow from the database to the chart.*
-
-The analysis reads the live records each time it runs. The analytics refresh after interest is recorded, an animal is adopted, a status is undone, or a CSV file is imported, and whenever Refresh Analytics is clicked, so the results and charts change whenever the underlying data changes.
+| Adoptions by Species | Counts completed adoption records for each species and ranks the totals. | Identifies the species with the highest number of adoptions. |
+| Adoptions by Breed | Groups completed adoption records by animal breed and counts their frequency. | Determines the most frequently adopted breeds. |
+| Average Shelter Stay | Calculates the number of days between each adopted animal's intake date and adoption date, then computes the overall and per-species averages. | Measures how long animals typically stay in the shelter before adoption. |
+| Adoptions by Classification | Recursively counts adopted animals within each classification, including its descendant classifications. | Shows adoption totals across different levels of the classification hierarchy. |
 
 ### 7.2 Recursive Classification Analysis
 
-`ClassificationService` and `ClassificationNode` organize breeds into a tree stored in the `classification` table (each row points to its parent). The tree has no fixed depth, for example: Dog > Sporting Group > Retriever > Golden Retriever. Recursive methods search for classifications by name or by full path, build paths, and walk the tree. During analytics, `AnalyticsService.adoptionCountByClassification()` calls itself on each child node and adds the children's totals to the node's own count, so each node reports its own adopted animals plus all of its descendants. This lets staff compare adoption patterns at different levels of the hierarchy instead of only by species or breed name.
+PawTrack uses `ClassificationService` and `ClassificationNode` to organize animal classifications into a hierarchical tree structure. Each classification may contain multiple child classifications, allowing the hierarchy to support different levels without a fixed depth.
+
+For example:
+
+`Dog → Sporting Group → Retriever → Golden Retriever`
+
+Recursive methods are used to search classifications, retrieve classification paths, and traverse the hierarchy. During analytics processing, `AnalyticsService` aggregates adoption counts from a classification and its descendants. This allows shelter staff to analyze adoption patterns at different levels of the classification hierarchy rather than relying only on individual species or breed names.
 
 ### 7.3 Data Visualization
 
-PawTrack uses a bar chart, drawn by the `BarChartPanel` class, because a bar chart compares a number across separate categories such as species, breeds, and classifications. Each chart has a title, a labeled category axis, a labeled value axis, and value labels on the bars. No legend is needed because each chart shows one series. `AnalyticsPanel` provides a metric dropdown and a Refresh Analytics button; if there is no adoption history yet, the chart says to import the CSV intake log.
+PawTrack presents its aggregated analytics using bar charts rendered by `BarChartPanel`. Bar charts are used because they allow numerical values to be compared across distinct categories, such as animal species, breeds, and classifications. The `AnalyticsPanel` provides metric selection, summary information, and refresh controls for viewing the analysis results.
 
-**Table 15: Analytics dashboard visualizations**
+**Table 19. Analytics Dashboard Visualizations**
 
-| Chart (dropdown choice) | Data displayed | Axis labels | Purpose |
-|---|---|---|---|
-| Adoptions by Species | Completed adoptions per species | Species / Adoptions | Compare adoption frequency |
-| Top Adopted Breeds (Top 8) | The eight breeds with the most adoptions | Breed / Adoptions | Highlight the most adopted breeds |
-| Average Shelter Stay (days) by Species | Average shelter days per species | Species / Days | Compare stay length |
-| Adoptions by Classification (recursive) | Adoptions per classification, including descendants (up to 12 non-zero entries) | Classification / Adoptions | Show adoption spread across the hierarchy |
+| Chart | Data Displayed | Purpose |
+|---|---|---|
+| Adoptions by Species | Number of completed adoptions per species | Compares adoption frequency between dogs and cats. |
+| Top Adopted Breeds (Top 8) | Eight breeds with the highest completed adoption counts | Highlights the most frequently adopted breeds. |
+| Average Shelter Stay by Species | Average number of days spent in the shelter before adoption | Compares shelter stay durations between species. |
+| Adoptions by Classification | Adoption totals for each classification, including descendants | Displays adoption patterns across the classification hierarchy. |
 
-The dashboard also shows a text summary: total animals, completed adoptions, most adopted species and breed, average shelter stay, and adopters currently on waitlists.
+![PawTrack Data Mining and Visualization Workflow](./data-mining-workflow.png)
 
----
+*Figure 7.1. Data Mining and Visualization Workflow of PawTrack. The diagram illustrates how animal and adoption records are processed by AnalyticsService and presented through the analytics dashboard.*
+
