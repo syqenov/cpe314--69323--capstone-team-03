@@ -145,13 +145,14 @@ public final class MainFrame extends JFrame {
     private JPanel imagePanel;
     private JPanel samplePreviewContainer;
     private boolean toolbarMinimized = false;
-    private javax.swing.JDialog statusPopup;
+
     private final User user;
     private Runnable onLogout;
     // Private helper for MainFrame GUI logic
     private final JProgressBar progressBar = new JProgressBar(0, 100);
     // Private helper for MainFrame GUI logic
     private final JLabel statusLabel = new JLabel("Ready");
+    private final AnimalStatusFilter statusFilter = new AnimalStatusFilter(animalTable, statusLabel, PRIMARY_BLUE);
     // Private helper for MainFrame GUI logic
     private final JComboBox<String> classificationFilter = new RoundedUi.RoundedComboBox(18);
     // Private helper for MainFrame GUI logic
@@ -414,15 +415,16 @@ public final class MainFrame extends JFrame {
         return bar;
     }
 
-    // Private helper for MainFrame GUI logic
+    // Keep track of the active tab for theme switching; the navigation helper
+    // owns the CardLayout, badge refresh and tab button state.
     private void selectTab(String title) {
-        currentTab = title; 
-        cardLayout.show(contentPanel, title);
-        if (applicationHeader != null) applicationHeader.refreshNotificationBadge();
-        if ("Dashboard".equals(title)) refreshDashboard();
-        for (int i = 0; i < tabButtons.size(); i++) {
-            tabButtons.get(i).setBaseColor(tabNames.get(i).equals(title) ? TAB_SELECTED_COLOR : TAB_COLOR);
-        }
+        currentTab = title;
+        PawTrackTabNavigator.select(title, cardLayout, contentPanel, tabButtons, tabNames,
+                TAB_SELECTED_COLOR, TAB_COLOR,
+                () -> {
+                    if (applicationHeader != null) applicationHeader.refreshNotificationBadge();
+                },
+                this::refreshDashboard);
     }
 
     // Private helper for MainFrame GUI logic
@@ -1153,7 +1155,7 @@ public final class MainFrame extends JFrame {
             waitlistTable.setBackground(tableBg);
             waitlistTable.setForeground(fg);
         }
-        statusPopup = null; // Force rebuild with new colors
+        statusFilter.closePopup(); // Close themed popup when switching appearance
 
         // Update tab button colors
         for (int i = 0; i < tabButtons.size(); i++) {
@@ -1295,154 +1297,9 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // Private helper for MainFrame GUI logic
+    // Table status UI and filtering are owned by AnimalStatusFilter.
     private void configureStatusFilter() {
-        javax.swing.table.JTableHeader header = animalTable.getTableHeader();
-        header.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mousePressed(java.awt.event.MouseEvent e) {
-                int column = header.columnAtPoint(e.getPoint());
-                if (column == 6) {
-                    showStatusFilterMenu(header, e.getX(), e.getY());
-                }
-            }
-        });
-        javax.swing.table.TableColumn statusColumn = animalTable.getColumnModel().getColumn(6);
-        statusColumn.setHeaderRenderer(new StatusHeaderRenderer());
-    }
-
-    /** Header cell renderer for the Status column that shows a down-arrow icon. */
-    private static final class StatusHeaderRenderer extends javax.swing.table.DefaultTableCellRenderer {
-        StatusHeaderRenderer() {
-            setOpaque(true);
-            setBackground(PRIMARY_BLUE);
-            setForeground(Color.WHITE);
-        }
-
-        @Override
-        public java.awt.Component getTableCellRendererComponent(javax.swing.JTable table, Object value,
-                boolean isSelected, boolean hasFocus, int row, int column) {
-            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            setText(value + " \u25BC");
-            return this;
-        }
-    }
-
-    // Private helper for MainFrame GUI logic
-    private void showStatusFilterMenu(java.awt.Component invoker, int x, int y) {
-        // Close any previously opened status panel first (prevents stacking).
-        if (statusPopup != null) {
-            statusPopup.setVisible(false);
-            statusPopup.dispose();
-            statusPopup = null;
-        }
-
-        java.awt.Window owner = javax.swing.SwingUtilities.getWindowAncestor(invoker);
-        javax.swing.JDialog dialog = new javax.swing.JDialog(owner, java.awt.Dialog.ModalityType.MODELESS);
-        dialog.setUndecorated(true);
-        dialog.setBackground(new Color(0, 0, 0, 0));
-        ((javax.swing.JComponent) dialog.getContentPane()).setOpaque(false);
-
-        StatusPopupPanel panel = new StatusPopupPanel();
-        final javax.swing.JDialog d = dialog;
-        Runnable close = () -> {
-            if (statusPopup == d) {
-                statusPopup = null;
-            }
-        };
-        panel.addOption("All", () -> applyStatusFilter(null), dialog, close);
-        for (AnimalStatus status : AnimalStatus.values()) {
-            panel.addOption(status.label(), () -> applyStatusFilter(status.label()), dialog, close);
-        }
-        dialog.getContentPane().add(panel);
-        dialog.pack();
-        java.awt.Point location = invoker.getLocationOnScreen();
-        dialog.setLocation(location.x + x, location.y + y);
-
-        final javax.swing.JDialog current = dialog;
-        dialog.addWindowFocusListener(new java.awt.event.WindowFocusListener() {
-            @Override
-            public void windowGainedFocus(java.awt.event.WindowEvent e) {
-            }
-
-            @Override
-            public void windowLostFocus(java.awt.event.WindowEvent e) {
-                current.setVisible(false);
-                current.dispose();
-                if (statusPopup == current) {
-                    statusPopup = null;
-                }
-            }
-        });
-
-        statusPopup = dialog;
-        dialog.setVisible(true);
-    }
-
-    /** Rounded blue drop-down panel with a soft shadow (custom-painted). */
-    private static final class StatusPopupPanel extends JPanel {
-        StatusPopupPanel() {
-            setOpaque(false);
-            setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-            setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-        }
-
-        void addOption(String text, Runnable action, javax.swing.JDialog dialog, Runnable onClose) {
-            JLabel label = new JLabel(text);
-            label.setForeground(Color.WHITE);
-            label.setOpaque(false);
-            label.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
-            label.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
-            label.addMouseListener(new java.awt.event.MouseAdapter() {
-                @Override
-                public void mouseEntered(java.awt.event.MouseEvent e) {
-                    label.setForeground(new Color(0xBFD7F2));
-                }
-
-                @Override
-                public void mouseExited(java.awt.event.MouseEvent e) {
-                    label.setForeground(Color.WHITE);
-                }
-
-                @Override
-                public void mouseClicked(java.awt.event.MouseEvent e) {
-                    action.run();
-                    dialog.setVisible(false);
-                    dialog.dispose();
-                    onClose.run();
-                }
-            });
-            add(label);
-        }
-
-        @Override
-        protected void paintComponent(java.awt.Graphics g) {
-            java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
-            g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
-                    java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
-            int s = 3;
-            int w = getWidth() - s;
-            int h = getHeight() - s;
-            g2.setColor(new Color(0, 0, 0, 70));
-            g2.fillRoundRect(s, s, w, h, 22, 22);
-            g2.setColor(PRIMARY_BLUE);
-            g2.fillRoundRect(0, 0, w, h, 22, 22);
-            g2.dispose();
-            super.paintComponent(g);
-        }
-    }
-
-    // Private helper for MainFrame GUI logic
-    private void applyStatusFilter(String label) {
-        javax.swing.table.TableRowSorter<javax.swing.table.TableModel> sorter =
-                (javax.swing.table.TableRowSorter<javax.swing.table.TableModel>) animalTable.getRowSorter();
-        if (label == null) {
-            sorter.setRowFilter(null);
-            statusLabel.setText("Showing all animals");
-        } else {
-            sorter.setRowFilter(javax.swing.RowFilter.regexFilter(java.util.regex.Pattern.quote(label), 6));
-            statusLabel.setText("Filtered by status: " + label);
-        }
+        statusFilter.install();
     }
 
     // Private helper for MainFrame GUI logic
@@ -1985,77 +1842,16 @@ public final class MainFrame extends JFrame {
 
     // ------------------------------------------------------------- helpers
 
-    /** Sets up keyboard shortcuts and mnemonics for the main window. */
+    /** Delegate global keyboard bindings to a focused view helper. */
     private void setupKeyboardShortcuts() {
-        javax.swing.InputMap im = getRootPane().getInputMap(javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW);
-        javax.swing.ActionMap am = getRootPane().getActionMap();
-
-        // Ctrl+R: Refresh animals
-        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_DOWN_MASK), "refreshAnimals");
-        am.put("refreshAnimals", new javax.swing.AbstractAction() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                onRefreshAnimals();
-            }
-        });
-
-        // Ctrl+F: Focus classification filter
-        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F, java.awt.event.InputEvent.CTRL_DOWN_MASK), "focusFilter");
-        am.put("focusFilter", new javax.swing.AbstractAction() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                classificationFilter.requestFocusInWindow();
-            }
-        });
-
-        // Ctrl+I: Import CSV
-        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_I, java.awt.event.InputEvent.CTRL_DOWN_MASK), "importCsv");
-        am.put("importCsv", new javax.swing.AbstractAction() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                onImportCsv();
-            }
-        });
-
-        // Ctrl+U: Undo last status change
-        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_U, java.awt.event.InputEvent.CTRL_DOWN_MASK), "undo");
-        am.put("undo", new javax.swing.AbstractAction() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                onUndo();
-            }
-        });
-
-        // Ctrl+E: Export to CSV
-        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_E, java.awt.event.InputEvent.CTRL_DOWN_MASK), "exportCsv");
-        am.put("exportCsv", new javax.swing.AbstractAction() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                exportToCsv();
-            }
-        });
-
-        // F5: Refresh analytics
-        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F5, 0), "refreshAnalytics");
-        am.put("refreshAnalytics", new javax.swing.AbstractAction() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                refreshAnalytics();
-            }
-        });
-
-        // Escape: Close any open dialogs/popups
-        im.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0), "escape");
-        am.put("escape", new javax.swing.AbstractAction() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                if (statusPopup != null) {
-                    statusPopup.setVisible(false);
-                    statusPopup.dispose();
-                    statusPopup = null;
-                }
-            }
-        });
+        PawTrackKeyboardShortcuts.install(getRootPane(),
+                this::onRefreshAnimals,
+                () -> classificationFilter.requestFocusInWindow(),
+                this::onImportCsv,
+                this::onUndo,
+                this::exportToCsv,
+                this::refreshAnalytics,
+                statusFilter::closePopup);
     }
 
     // ------------------------------------------------------------- helpers
@@ -2176,19 +1972,18 @@ public final class MainFrame extends JFrame {
 
     // Private helper for MainFrame GUI logic
     private void info(String message) {
-        JOptionPane.showMessageDialog(this, message, "Information", JOptionPane.INFORMATION_MESSAGE);
+        PawTrackMessageDialogs.info(this, message);
     }
 
     // Private helper for MainFrame GUI logic
     private void warn(String message) {
-        JOptionPane.showMessageDialog(this, message, "Warning", JOptionPane.WARNING_MESSAGE);
+        PawTrackMessageDialogs.warn(this, message);
     }
 
     // Private helper for MainFrame GUI logic
     private void error(String title, Exception failure) {
         log(title + ": " + failure.getMessage());
-        JOptionPane.showMessageDialog(this, title + "\n" + failure.getMessage(), "Error",
-                JOptionPane.ERROR_MESSAGE);
+        PawTrackMessageDialogs.error(this, title, failure);
     }
 
     // Private helper for MainFrame GUI logic
@@ -2214,43 +2009,9 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    // Private helper for MainFrame GUI logic
+    // Delegate column visibility presentation to a dedicated view.
     private void showColumnVisibilityDialog() {
-        JDialog dialog = new JDialog(this, "Column Visibility", true);
-        dialog.setLayout(new BorderLayout());
-        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
-
-        String[] columnNames = {"ID", "Name", "Species", "Breed", "Age", "Gender", "Status", "Fee", "Classification", "Intake"};
-        for (int i = 0; i < columnNames.length && i < animalTable.getColumnCount(); i++) {
-            JCheckBox check = new JCheckBox(columnNames[i]);
-            check.setSelected(animalTable.getColumnModel().getColumn(i).getWidth() > 0);
-            final int colIdx = i;
-            check.addActionListener(e -> {
-                javax.swing.table.TableColumn column = animalTable.getColumnModel().getColumn(colIdx);
-                column.setMinWidth(check.isSelected() ? 50 : 0);
-                column.setMaxWidth(check.isSelected() ? Integer.MAX_VALUE : 0);
-                column.setWidth(check.isSelected() ? 100 : 0);
-                column.setPreferredWidth(check.isSelected() ? 100 : 0);
-            });
-            panel.add(check);
-        }
-
-        JScrollPane scroll = new JScrollPane(panel);
-        scroll.setPreferredSize(new Dimension(220, 300));
-        dialog.add(scroll, BorderLayout.CENTER);
-
-        JButton closeBtn = new JButton("Close");
-        closeBtn.addActionListener(e -> dialog.dispose());
-        JPanel btnPanel = new JPanel();
-        btnPanel.add(closeBtn);
-        dialog.add(btnPanel, BorderLayout.SOUTH);
-
-        dialog.pack();
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
+        AnimalColumnVisibilityDialog.show(this, animalTable);
     }
+
 }
