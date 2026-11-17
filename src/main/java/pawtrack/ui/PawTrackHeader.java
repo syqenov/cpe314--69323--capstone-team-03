@@ -95,8 +95,8 @@ public final class PawTrackHeader extends JPanel {
     }
 
     private static JButton topButton(String name) {
-        JButton button = new JButton(name);
-        button.setOpaque(true);
+        JButton button = new HeaderActionButton(name);
+        button.setOpaque(false);
         button.setBackground(new Color(0xEDF3FD));
         button.setForeground(BLUE);
         button.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -106,6 +106,29 @@ public final class PawTrackHeader extends JPanel {
                 BorderFactory.createLineBorder(new Color(0xDDE8FA), 1, true),
                 BorderFactory.createEmptyBorder(8, 12, 8, 12)));
         return button;
+    }
+
+    /** Native Windows buttons ignored the new dark background while drawing
+     * near-white labels. Explicitly paint both surface and text theme colors. */
+    private static final class HeaderActionButton extends JButton {
+        HeaderActionButton(String label) {
+            super(label);
+            setContentAreaFilled(false);
+            setBorderPainted(false);
+        }
+        @Override protected void paintComponent(Graphics graphics) {
+            Graphics2D g = (Graphics2D) graphics.create();
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            boolean dark = PawTrackTheme.isDark();
+            g.setColor(dark ? (getModel().isRollover() ? PawTrackTheme.DARK_HOVER
+                    : PawTrackTheme.DARK_INPUT) : new Color(0xEDF3FD));
+            g.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 11, 11);
+            g.setColor(dark ? PawTrackTheme.DARK_BORDER : new Color(0xDDE8FA));
+            g.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 11, 11);
+            g.dispose();
+            setForeground(dark ? PawTrackTheme.DARK_TEXT : BLUE);
+            super.paintComponent(graphics);
+        }
     }
 
     public void refreshNotificationBadge() {

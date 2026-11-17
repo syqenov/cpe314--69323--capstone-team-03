@@ -1,8 +1,7 @@
 package pawtrack.ui;
 
-import pawtrack.service.PetPhotoStore;
+import pawtrack.model.Species;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
@@ -16,15 +15,13 @@ import java.awt.*;
 import java.awt.geom.Path2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.HashSet;
+import java.util.function.Consumer;
 
 /**
  * An account-scoped visual overview. MainFrame supplies only the current adopter's
@@ -82,15 +79,28 @@ public final class MyRecordsPanel extends JPanel {
     };
     private final JComboBox<String> statusFilter = new JComboBox<>(
             new String[]{"All statuses", "Waiting", "Under review", "Reserved", "Completed", "Other"});
-    private final Map<Integer, ImageIcon> photoCache = new HashMap<>();
+    /** Uses the same photo and API cache as Browse Pets and staff Waitlist. */
+    @FunctionalInterface
+    interface PhotoLoader {
+        void load(int id, Species species, String breed, int width, int height,
+                  Consumer<PetImageCache.Loaded> onSuccess, Consumer<Exception> onFailure);
+    }
+
+    private final PhotoLoader photoLoader;
+    private final Map<Integer, PetImageCache.Loaded> photoCache = new HashMap<>();
     private final Set<Integer> loadingPhotoIds = new HashSet<>();
-    private final Set<Integer> missingPhotoIds = new HashSet<>();
+    private final Map<Integer, Long> failedPhotoAt = new HashMap<>();
+    private static final long RETRY_AFTER_MS = 60_000;
     private List<ApplicationRow> currentApplications = List.of();
     private List<AdoptionRow> currentAdoptions = List.of();
-    private final PetPhotoStore photos = PetPhotoStore.defaultStore();
-
     public MyRecordsPanel(Color surfaceColor) {
+        this(surfaceColor, PetImageCache.get()::load);
+    }
+
+    /** Package-private loader injection keeps photo tests fully offline. */
+    MyRecordsPanel(Color surfaceColor, PhotoLoader photoLoader) {
         super(new BorderLayout());
+        this.photoLoader = Objects.requireNonNull(photoLoader, "photoLoader");
         Color background = Objects.requireNonNull(surfaceColor, "surfaceColor");
         setBackground(background);
         recordsArea.setEditable(false);
@@ -310,6 +320,10 @@ public final class MyRecordsPanel extends JPanel {
         Integer selectedId = selectedAnimalId();
         currentApplications = List.copyOf(requestRows);
         currentAdoptions = List.copyOf(adoptionRows);
+        // A shelter photo might have been added since the last refresh.
+        // The shared cache preserves API sample consistency across screens.
+        photoCache.clear();
+        failedPhotoAt.clear();
         applications.setRowCount(0);
         adoptions.setRowCount(0);
         int pending = 0;
@@ -352,6 +366,7 @@ public final class MyRecordsPanel extends JPanel {
             selectedStatus.setText("NOT SELECTED");
             selectedDescription.setText("Your application details and current progress appear here.");
             selectionPhoto.setText("");
+            selectionPhoto.setToolTipText(null);
             selectionPhoto.setIcon(new PlaceholderIcon(76, 80, 1.25, ""));
             return;
         }
@@ -365,42 +380,67 @@ public final class MyRecordsPanel extends JPanel {
         selectedStatus.setForeground(stateColor(state));
         selectedStatus.setBackground(stateBackground(state));
         selectedDescription.setText(statusExplanation(row.status()));
-        String species = row.breed().toLowerCase(java.util.Locale.ROOT).contains("cat") ? "CAT" : "DOG";
-        ImageIcon photo = photoCache.get(row.animalId());
+        Species species = speciesFor(row.breed());
+        PetImageCache.Loaded photo = photoCache.get(row.animalId());
         selectionPhoto.setText("");
-        selectionPhoto.setIcon(photo != null ? photo : new PlaceholderIcon(76, 80, 1.25, species));
-        if (photo == null) loadPhoto(row.animalId());
+        selectionPhoto.setIcon(photo != null ? photo.icon() :
+                new PlaceholderIcon(76, 80, 1.25, species == null ? "PET" : species.name()));
+        selectionPhoto.setToolTipText(photo == null ? "Photo unavailable" : photoTooltip(photo));
+        if (photo != null && !photo.actualPhoto()) {
+            selectedDescription.setText("Sample image from " + photo.provider() +
+                    " (not this specific pet).\n" + statusExplanation(row.status()));
+        }
+        if (photo == null) loadPhoto(row);
     }
 
-    private void loadPhoto(int id) {
-        if (id <= 0 || photoCache.containsKey(id) || missingPhotoIds.contains(id) || !loadingPhotoIds.add(id)) return;
-        new SwingWorker<ImageIcon, Void>() {
-            @Override protected ImageIcon doInBackground() {
-                try {
-                    List<Path> images = photos.list(id);
-                    if (images.isEmpty()) return null;
-                    Path first = images.get(0);
-                    if (Files.size(first) > PetPhotoStore.MAX_BYTES) return null;
-                    BufferedImage original = ImageIO.read(first.toFile());
-                    if (original == null) return null;
-                    return new ImageIcon(cover(original, 76, 80));
-                } catch (IOException ex) { return null; }
-            }
-            @Override protected void done() {
-                loadingPhotoIds.remove(id);
-                try {
-                    ImageIcon icon = get();
-                    if (icon != null) photoCache.put(id, icon);
-                    else missingPhotoIds.add(id);
-                    Integer selected = selectedAnimalId();
-                    if (selected != null && selected == id && icon != null) {
-                        selectionPhoto.setText("");
-                        selectionPhoto.setIcon(icon);
-                    }
-                    applicationsTable.repaint();
-                } catch (Exception ignored) { missingPhotoIds.add(id); /* Keep species fallback. */ }
-            }
-        }.execute();
+    /**
+     * Starts a single asynchronous load for this pet. Local uploaded photos take
+     * priority; the existing shared cache fetches a dog/cat API sample otherwise.
+     * The callbacks are delivered on Swing's EDT and never block table painting.
+     */
+    private void loadPhoto(ApplicationRow row) {
+        int id = row.animalId();
+        if (id <= 0 || photoCache.containsKey(id) || loadingPhotoIds.contains(id)) return;
+        Long lastFailure = failedPhotoAt.get(id);
+        if (lastFailure != null && System.currentTimeMillis() - lastFailure < RETRY_AFTER_MS) return;
+        loadingPhotoIds.add(id);
+        try {
+            photoLoader.load(id, speciesFor(row.breed()), breedForApi(row.breed()), 76, 80,
+                    loaded -> {
+                        loadingPhotoIds.remove(id);
+                        failedPhotoAt.remove(id);
+                        if (loaded != null && loaded.icon() != null) photoCache.put(id, loaded);
+                        if (Objects.equals(selectedAnimalId(), id)) updateSelection();
+                        applicationsTable.repaint();
+                    }, failure -> {
+                        loadingPhotoIds.remove(id);
+                        failedPhotoAt.put(id, System.currentTimeMillis());
+                        applicationsTable.repaint(); // Retain a paw placeholder offline.
+                    });
+        } catch (RuntimeException failure) {
+            loadingPhotoIds.remove(id);
+            failedPhotoAt.put(id, System.currentTimeMillis());
+        }
+    }
+
+    /** MainFrame formats these values as "Dog / Golden Retriever" or "Cat / Siamese". */
+    static Species speciesFor(String speciesAndBreed) {
+        if (speciesAndBreed == null) return null;
+        String prefix = speciesAndBreed.split(" / ", 2)[0].strip();
+        if ("Dog".equalsIgnoreCase(prefix)) return Species.DOG;
+        if ("Cat".equalsIgnoreCase(prefix)) return Species.CAT;
+        return null;
+    }
+
+    static String breedForApi(String speciesAndBreed) {
+        if (speciesAndBreed == null) return "";
+        int divider = speciesAndBreed.indexOf(" / ");
+        return divider < 0 ? "" : speciesAndBreed.substring(divider + 3).strip();
+    }
+
+    private static String photoTooltip(PetImageCache.Loaded photo) {
+        return photo.actualPhoto() ? "Photo uploaded by the shelter" :
+                "Sample image from " + photo.provider() + "; not this specific pet";
     }
 
     public Integer selectedAnimalId() {
@@ -577,13 +617,18 @@ public final class MyRecordsPanel extends JPanel {
                 ApplicationRow r = currentApplications.get(index);
                 if (column == 0) {
                     l.setText("<html><b>" + escapeHtml(r.pet()) + "</b></html>");
-                    ImageIcon image = photoCache.get(r.animalId());
+                    PetImageCache.Loaded image = photoCache.get(r.animalId());
                     if (image != null) {
-                        Image thumb = image.getImage().getScaledInstance(38, 40, Image.SCALE_SMOOTH);
+                        Image thumb = image.icon().getImage().getScaledInstance(38, 40, Image.SCALE_SMOOTH);
                         l.setIcon(new ImageIcon(thumb));
+                        l.setToolTipText(photoTooltip(image));
+                        if (!image.actualPhoto()) {
+                            l.setText("<html><b>" + escapeHtml(r.pet()) +
+                                    "</b><br><font color='#A9BCD3'><small>Sample image</small></font></html>");
+                        }
                     } else {
                         l.setIcon(new PlaceholderIcon(38, 40, 0.62, ""));
-                        loadPhoto(r.animalId());
+                        loadPhoto(r);
                     }
                     l.setIconTextGap(10);
                 } else if (column == 1) {

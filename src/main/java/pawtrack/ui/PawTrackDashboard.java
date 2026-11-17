@@ -529,6 +529,10 @@ public final class PawTrackDashboard extends JPanel {
             empty.add(text(latest.isEmpty() && i == 2 ? "New arrivals will appear here" : "", 12, false, MUTED), BorderLayout.CENTER);
             recentRows.add(empty);
         }
+        // Refresh results can arrive after the original theme traversal.
+        // Capture each new label's light colors before theming it, so Light
+        // Mode restores correctly rather than retaining navy-on-navy text.
+        if (PawTrackTheme.isDark()) PawTrackThemeManager.applyCurrent(recentRows);
         recentRows.revalidate();
         recentRows.repaint();
     }

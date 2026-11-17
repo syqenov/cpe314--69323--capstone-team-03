@@ -226,10 +226,8 @@ public final class PawTrackSidebar extends JPanel {
 
     private void confirmLogout() {
         if (onLogout == null) return;
-        int choice = JOptionPane.showConfirmDialog(SwingUtilities.getWindowAncestor(this),
-                "Are you sure you want to log out?", "Log out",
-                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-        if (choice == JOptionPane.YES_OPTION) onLogout.run();
+        if (PawTrackSimpleDialog.confirm(SwingUtilities.getWindowAncestor(this),
+                "Log out", "Are you sure you want to log out?")) onLogout.run();
     }
 
     // ------------------------------------------------ legacy (flat) layout

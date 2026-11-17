@@ -52,7 +52,9 @@ public final class AnimalBrowsePanel extends JPanel {
     private final TableRowSorter<TableModel> sorter;
     private final CardLayout viewsLayout = new CardLayout();
     private final JPanel views = PremiumUi.clear(viewsLayout);
-    private final JPanel galleryGrid = PremiumUi.clear(new GridLayout(0, 3, 13, 13));
+    private final JPanel galleryGrid = PremiumUi.clear(new GridLayout(0, 2, 13, 13));
+    private final JScrollPane galleryScroll;
+    private int galleryColumns = 2;
     private final JLabel pageOf = PremiumUi.caption("");
     private final JTextField pageField = new JTextField(3);
     private final JButton previousPage = PremiumUi.button("Previous", this::previousPage, false);
@@ -99,27 +101,31 @@ public final class AnimalBrowsePanel extends JPanel {
                 : "Find a companion, explore profiles and follow adoption availability."), BorderLayout.SOUTH);
         top.add(heading, BorderLayout.NORTH);
 
-        JPanel tools = PremiumUi.clear(new FlowLayout(FlowLayout.LEFT, 9, 4));
+        JPanel tools = PremiumUi.clear(new BorderLayout(0, 6));
+        JPanel filters = PremiumUi.clear(new FlowLayout(FlowLayout.LEFT, 9, 2));
+        JPanel commands = PremiumUi.clear(new FlowLayout(FlowLayout.LEFT, 9, 2));
         search.setName("animalBrowseSearch");
         search.setToolTipText("Search name, species, breed and table details");
-        search.setPreferredSize(new Dimension(220, 37));
+        search.setPreferredSize(new Dimension(175, 37));
         search.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(PremiumUi.LINE),
                 new EmptyBorder(6, 10, 6, 10)));
         status.setName("animalBrowseStatus");
         status.setPreferredSize(new Dimension(150, 37));
         speciesFilter.setName("animalBrowseSpecies");
         speciesFilter.setPreferredSize(new Dimension(130, 37));
-        tools.add(search);
-        tools.add(status);
-        tools.add(speciesFilter);
-        tools.add(PremiumUi.button("Refresh", refresh, false));
+        filters.add(search);
+        filters.add(status);
+        filters.add(speciesFilter);
+        commands.add(PremiumUi.button("Refresh", refresh, false));
         ButtonGroup group = new ButtonGroup();
         group.add(galleryToggle);
         group.add(tableToggle);
         galleryToggle.addActionListener(e -> setGalleryView(true));
         tableToggle.addActionListener(e -> setGalleryView(false));
-        tools.add(galleryToggle);
-        tools.add(tableToggle);
+        commands.add(galleryToggle);
+        commands.add(tableToggle);
+        tools.add(filters, BorderLayout.NORTH);
+        tools.add(commands, BorderLayout.SOUTH);
         top.add(tools, BorderLayout.CENTER);
         top.add(resultCount, BorderLayout.SOUTH);
         add(top, BorderLayout.NORTH);
@@ -138,7 +144,13 @@ public final class AnimalBrowsePanel extends JPanel {
 
         // ---------------------------------------------------------------- gallery view
         JPanel gallery = PremiumUi.clear(new BorderLayout(0, 9));
-        JScrollPane galleryScroll = new JScrollPane(galleryGrid);
+        galleryScroll = new JScrollPane(galleryGrid);
+        galleryScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        galleryScroll.getViewport().addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override public void componentResized(java.awt.event.ComponentEvent e) {
+                updateGalleryColumns();
+            }
+        });
         galleryScroll.setBorder(null);
         galleryScroll.getViewport().setBackground(PremiumUi.CANVAS);
         galleryScroll.getVerticalScrollBar().setUnitIncrement(22);
@@ -157,26 +169,32 @@ public final class AnimalBrowsePanel extends JPanel {
 
         // ---------------------------------------------------------------- profile box (hidden until a pet is selected)
         preview = PremiumUi.card(new BorderLayout(0, 12));
-        preview.setPreferredSize(new Dimension(262, 0));
-        preview.setMinimumSize(new Dimension(215, 0));
+        preview.setPreferredSize(new Dimension(240, 0));
+        preview.setMinimumSize(new Dimension(200, 0));
         preview.add(PremiumUi.title("Pet Profile", 18), BorderLayout.NORTH);
         JPanel description = PremiumUi.clear(new BorderLayout(0, 9));
         profilePhoto.setOpaque(true);
         profilePhoto.setBackground(new Color(0xE4EFFB));
         profilePhoto.setForeground(PremiumUi.BLUE);
         profilePhoto.setFont(PremiumUi.font(22, true));
-        profilePhoto.setPreferredSize(new Dimension(PROFILE_IMG_W, PROFILE_IMG_H));
+        profilePhoto.setPreferredSize(new Dimension(175, 145));
         JPanel photoBox = PremiumUi.clear(new BorderLayout(0, 3));
         photoBox.add(profilePhoto, BorderLayout.CENTER);
         photoBox.add(profilePhotoNote, BorderLayout.SOUTH);
         description.add(photoBox, BorderLayout.NORTH);
-        JPanel details = PremiumUi.clear(new GridLayout(4, 1, 0, 7));
+        JPanel details = PremiumUi.clear(new GridLayout(4, 1, 0, 5));
         details.add(profileName);
         details.add(profileBreed);
         details.add(profileStatus);
         details.add(profileDetails);
         description.add(details, BorderLayout.CENTER);
-        preview.add(description, BorderLayout.CENTER);
+        JScrollPane previewScroll = new JScrollPane(description);
+        previewScroll.setBorder(null);
+        previewScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        previewScroll.getViewport().setOpaque(false);
+        previewScroll.setOpaque(false);
+        previewScroll.getVerticalScrollBar().setUnitIncrement(16);
+        preview.add(previewScroll, BorderLayout.CENTER);
         JPanel actions = PremiumUi.clear(new GridLayout(staff ? 1 : 2, 1, 0, 7));
         JButton profileButton = PremiumUi.button("View pet profile", viewProfile, false);
         profileButton.setName("animalBrowseProfile");
@@ -262,7 +280,10 @@ public final class AnimalBrowsePanel extends JPanel {
         galleryToggle.setSelected(enabled);
         tableToggle.setSelected(!enabled);
         viewsLayout.show(views, enabled ? "gallery" : "table");
-        if (enabled) renderGallery();
+        if (enabled) {
+            updateGalleryColumns();
+            renderGallery();
+        }
     }
 
     private int pageCount() {
@@ -284,6 +305,17 @@ public final class AnimalBrowsePanel extends JPanel {
         } catch (NumberFormatException ignored) {
             // keep the current page; renderGallery restores the box text
         }
+        renderGallery();
+    }
+
+    /** Adjust the gallery to the actual visible width instead of forcing three wide cards. */
+    private void updateGalleryColumns() {
+        int width = galleryScroll.getViewport().getWidth();
+        if (width <= 0) return;
+        int wanted = width >= 890 ? 3 : width >= 510 ? 2 : 1;
+        if (wanted == galleryColumns) return;
+        galleryColumns = wanted;
+        galleryGrid.setLayout(new GridLayout(0, wanted, 13, 13));
         renderGallery();
     }
 
@@ -345,7 +377,7 @@ public final class AnimalBrowsePanel extends JPanel {
         image.setForeground(PremiumUi.BLUE);
         if (PawTrackTheme.isDark()) PawTrackThemeManager.applyCurrent(image);
         image.setFont(PremiumUi.font(20, true));
-        image.setPreferredSize(new Dimension(CARD_IMG_W, CARD_IMG_H));
+        image.setPreferredSize(new Dimension(135, CARD_IMG_H));
         loadInto(image, id, species, breed, CARD_IMG_W, CARD_IMG_H);
         card.add(image, BorderLayout.CENTER);
 

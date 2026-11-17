@@ -36,6 +36,11 @@ public final class BarChartPanel extends JComponent {
     private static final Color AXIS_COLOR = new Color(0x2B2B2B);
     private static final Color GRID_COLOR = new Color(0xDDDDDD);
 
+    // Custom Java2D text bypasses Swing component foreground updates.
+    private static Color axisText() { return PawTrackTheme.isDark() ? PawTrackTheme.DARK_TEXT : AXIS_COLOR; }
+    private static Color mutedText() { return PawTrackTheme.isDark() ? PawTrackTheme.DARK_MUTED : new Color(0x536884); }
+    private static Color chartGrid() { return PawTrackTheme.isDark() ? PawTrackTheme.DARK_BORDER : GRID_COLOR; }
+
     public BarChartPanel() {
         setOpaque(true);
         setBackground(Color.WHITE);
@@ -80,7 +85,7 @@ public final class BarChartPanel extends JComponent {
         int height = getHeight();
 
         if (categories.isEmpty()) {
-            g2.setColor(AXIS_COLOR);
+            g2.setColor(axisText());
             g2.setFont(getFont().deriveFont(Font.BOLD, 14f));
             drawCentred(g2, emptyMessage, width / 2, height / 2);
             g2.dispose();
@@ -100,7 +105,7 @@ public final class BarChartPanel extends JComponent {
         int plotWidth = Math.max(10, width - left - right);
         int plotHeight = Math.max(10, height - top - bottom);
 
-        g2.setColor(AXIS_COLOR);
+        g2.setColor(axisText());
         g2.setFont(getFont().deriveFont(Font.BOLD, 16f));
         drawCentred(g2, title, width / 2, 28);
 
@@ -113,17 +118,17 @@ public final class BarChartPanel extends JComponent {
         int ticks = 5;
         for (int i = 0; i <= ticks; i++) {
             int y = top + plotHeight - (int) Math.round(plotHeight * (i / (double) ticks));
-            g2.setColor(GRID_COLOR);
+            g2.setColor(chartGrid());
             g2.setStroke(new BasicStroke(1f));
             g2.drawLine(left, y, left + plotWidth, y);
-            g2.setColor(AXIS_COLOR);
+            g2.setColor(axisText());
             g2.setFont(getFont().deriveFont(11f));
             String tick = String.format(valueFormat, axisMax * i / ticks);
             FontMetrics fm = g2.getFontMetrics();
             g2.drawString(tick, left - 10 - fm.stringWidth(tick), y + fm.getAscent() / 2 - 2);
         }
 
-        g2.setColor(AXIS_COLOR);
+        g2.setColor(axisText());
         g2.setStroke(new BasicStroke(1.6f));
         g2.drawLine(left, top, left, top + plotHeight);
         g2.drawLine(left, top + plotHeight, left + plotWidth, top + plotHeight);
@@ -144,13 +149,13 @@ public final class BarChartPanel extends JComponent {
             g2.setPaint(new GradientPaint(x, y, first, x, y + Math.max(barHeight, 1), second));
             g2.fillRoundRect(x, y, (int) Math.round(barWidth), Math.max(barHeight, 2), 12, 12);
 
-            g2.setColor(AXIS_COLOR);
+            g2.setColor(axisText());
             g2.setFont(getFont().deriveFont(Font.BOLD, 11f));
             String valueLabel = String.format(valueFormat, value);
             FontMetrics fm = g2.getFontMetrics();
             g2.drawString(valueLabel, x + (int) ((barWidth - fm.stringWidth(valueLabel)) / 2), y - 5);
 
-            g2.setColor(new Color(0x203B66));
+            g2.setColor(axisText());
             g2.setFont(getFont().deriveFont(Font.PLAIN, 12f));
             String category = truncate(categories.get(i), 22);
             int labelX = x + (int) (barWidth / 2);
@@ -164,7 +169,7 @@ public final class BarChartPanel extends JComponent {
             }
         }
 
-        g2.setColor(AXIS_COLOR);
+        g2.setColor(axisText());
         g2.setFont(getFont().deriveFont(Font.BOLD, 12f));
         drawCentred(g2, categoryAxisLabel, left + plotWidth / 2, height - 10);
         drawVerticalLabel(g2, valueAxisLabel, 18, top + plotHeight / 2);
@@ -191,7 +196,7 @@ public final class BarChartPanel extends JComponent {
         for (double value : values) max = Math.max(max, value);
         double axisMax = niceCeiling(Math.max(1, max));
 
-        g2.setColor(AXIS_COLOR);
+        g2.setColor(axisText());
         g2.setFont(getFont().deriveFont(Font.BOLD, 16f));
         drawCentred(g2, title, width / 2, 28);
 
@@ -199,9 +204,9 @@ public final class BarChartPanel extends JComponent {
         g2.setStroke(new BasicStroke(1f));
         for (int tick = 0; tick <= 4; tick++) {
             int x = left + (int) Math.round(plotWidth * tick / 4.0);
-            g2.setColor(GRID_COLOR);
+            g2.setColor(chartGrid());
             g2.drawLine(x, top - 7, x, top + plotHeight);
-            g2.setColor(new Color(0x536884));
+            g2.setColor(mutedText());
             g2.setFont(getFont().deriveFont(10f));
             String label = String.format(valueFormat, axisMax * tick / 4.0);
             FontMetrics fm = g2.getFontMetrics();
@@ -217,12 +222,12 @@ public final class BarChartPanel extends JComponent {
                     (int) Math.round(plotWidth * value / axisMax));
 
             if (i % 2 == 0) {
-                g2.setColor(new Color(0xF5F8FD));
+                g2.setColor(PawTrackTheme.isDark() ? PawTrackTheme.DARK_INPUT : new Color(0xF5F8FD));
                 g2.fillRoundRect(6, centreY - rowHeight / 2, width - 12, rowHeight, 8, 8);
             }
             String readable = compactHierarchy(categories.get(i));
             g2.setFont(getFont().deriveFont(Font.PLAIN, 11.5f));
-            g2.setColor(new Color(0x203B66));
+            g2.setColor(axisText());
             FontMetrics fm = g2.getFontMetrics();
             readable = fitEnd(readable, fm, Math.max(50, left - 25));
             g2.drawString(readable, Math.max(7, left - 14 - fm.stringWidth(readable)),
@@ -233,14 +238,14 @@ public final class BarChartPanel extends JComponent {
             g2.setPaint(new GradientPaint(left, barY, first, left + Math.max(1, barWidth), barY, second));
             if (barWidth > 0) g2.fillRoundRect(left, barY, barWidth, barHeight, 9, 9);
 
-            g2.setColor(new Color(0x18345E));
+            g2.setColor(axisText());
             g2.setFont(getFont().deriveFont(Font.BOLD, 11f));
             String number = String.format(valueFormat, value);
             int numberX = Math.min(width - g2.getFontMetrics().stringWidth(number) - 5, left + barWidth + 8);
             g2.drawString(number, numberX, centreY + g2.getFontMetrics().getAscent() / 2 - 2);
         }
         g2.setFont(getFont().deriveFont(Font.BOLD, 12f));
-        g2.setColor(AXIS_COLOR);
+        g2.setColor(axisText());
         drawCentred(g2, valueAxisLabel, left + plotWidth / 2, height - 5);
     }
 

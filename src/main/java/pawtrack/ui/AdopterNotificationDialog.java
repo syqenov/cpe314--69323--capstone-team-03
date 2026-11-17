@@ -53,14 +53,13 @@ public final class AdopterNotificationDialog {
             }
             JTextArea text = new JTextArea(content.toString());
             text.setEditable(false); text.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-            text.setBackground(new Color(0xF5F8FD));
+            text.setBackground(PawTrackTheme.isDark() ? PawTrackTheme.DARK_INPUT : new Color(0xF5F8FD));
+            text.setForeground(PawTrackTheme.isDark() ? PawTrackTheme.DARK_TEXT : new Color(0x1B3157));
+            text.setCaretColor(text.getForeground());
             text.setMargin(new Insets(18, 18, 18, 18));
             JScrollPane pane = new JScrollPane(text);
             pane.setPreferredSize(new Dimension(480, 300));
-            Object[] actions = { "Close", "Mark all read" };
-            int choice = JOptionPane.showOptionDialog(parent, pane, "My Notifications",
-                    JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null, actions, actions[0]);
-            if (choice == 1) readService.markAllRead();
+            if (PawTrackSimpleDialog.showNotifications(parent, pane)) readService.markAllRead();
         } catch (SQLException err) {
             JOptionPane.showMessageDialog(parent, "Notifications unavailable: " + err.getMessage(),
                     "Notifications", JOptionPane.ERROR_MESSAGE);

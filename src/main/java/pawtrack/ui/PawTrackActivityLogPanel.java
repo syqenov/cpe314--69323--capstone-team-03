@@ -298,6 +298,9 @@ public final class PawTrackActivityLogPanel extends JPanel {
         }
         footer.setText("Showing " + shown + " of " + entries.size() + " in-session events");
         if (!entries.isEmpty()) select(entries.get(entries.size() - 1));
+        // Entries are rebuilt on every event or filter change. They must be
+        // themed after insertion, not only when the main window first opens.
+        if (PawTrackTheme.isDark()) PawTrackThemeManager.applyCurrent(feed);
         feed.revalidate(); feed.repaint();
     }
 

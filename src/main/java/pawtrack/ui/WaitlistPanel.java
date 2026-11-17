@@ -422,11 +422,18 @@ public final class WaitlistPanel extends JPanel {
                 x.fillRoundRect(2, 6, Math.max(0, w - 4), Math.max(0, h - 9), 20, 20);
                 JButton b = (JButton) c;
                 Color bg = b.isEnabled() ? color : new Color(0xD9E2EE);
+                // Pale action fills paired with light text disappeared in dark mode.
+                if (PawTrackTheme.isDark() && color.getRed() > 205 && color.getGreen() > 205
+                        && color.getBlue() > 205) {
+                    bg = PawTrackTheme.DARK_INPUT;
+                    b.setForeground(b.isEnabled() ? PawTrackTheme.DARK_TEXT : PawTrackTheme.DARK_MUTED);
+                }
                 if (b.getModel().isPressed()) bg = bg.darker();
                 else if (b.getModel().isRollover() && b.isEnabled()) bg = bg.brighter();
                 x.setPaint(new GradientPaint(0, 0, bg.brighter(), 0, h, bg));
                 x.fillRoundRect(1, 1, Math.max(0, w - 3), Math.max(0, h - 9), 19, 19);
-                x.setColor(outline);
+                x.setColor(PawTrackTheme.isDark() && color.getRed() > 205 && color.getGreen() > 205
+                        && color.getBlue() > 205 ? PawTrackTheme.DARK_BORDER : outline);
                 x.setStroke(new BasicStroke(1f));
                 x.drawRoundRect(1, 1, Math.max(0, w - 3), Math.max(0, h - 9), 19, 19);
             } finally { x.dispose(); }
@@ -449,7 +456,8 @@ public final class WaitlistPanel extends JPanel {
                 x.translate(px, py);
                 x.scale(size / 24.0, size / 24.0);
                 x.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                x.setColor(color);
+                x.setColor(PawTrackTheme.isDark() && (kind == Kind.REFRESH || kind == Kind.CROSS)
+                        ? PawTrackTheme.DARK_TEXT : color);
                 x.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 switch (kind) {
                     case DOCUMENT -> {

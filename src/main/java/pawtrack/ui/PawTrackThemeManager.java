@@ -6,6 +6,13 @@ import javax.swing.border.LineBorder;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.plaf.ScrollBarUI;
+import javax.swing.plaf.ComboBoxUI;
+import javax.swing.plaf.ButtonUI;
+import javax.swing.plaf.basic.BasicArrowButton;
+import javax.swing.plaf.basic.BasicButtonUI;
+import javax.swing.plaf.basic.BasicComboBoxUI;
+import javax.swing.ListCellRenderer;
+import java.awt.Rectangle;
 import javax.swing.plaf.basic.BasicScrollBarUI;
 import java.awt.*;
 import java.util.Collections;
@@ -89,6 +96,13 @@ public final class PawTrackThemeManager {
             } else if (scroll.getClientProperty(key) instanceof ScrollBarUI ui
                     && scroll.getUI() != ui) scroll.setUI(ui);
         }
+        if (component instanceof JComboBox<?> combo) {
+            applyComboContrast(combo, dark);
+        }
+        if (component instanceof JButton button &&
+                SwingUtilities.getAncestorOfClass(JOptionPane.class, button) != null) {
+            applyOptionButtonContrast(button, dark);
+        }
         if (component instanceof JList<?> list) {
             if (previous.selectionBackground != null) list.setSelectionBackground(dark ? PawTrackTheme.DARK_SELECTED : previous.selectionBackground);
             if (previous.selectionForeground != null) list.setSelectionForeground(dark ? Color.WHITE : previous.selectionForeground);
@@ -125,6 +139,83 @@ public final class PawTrackThemeManager {
         }
         if (component instanceof Container parent) {
             for (Component child : parent.getComponents()) applyComponent(child, dark);
+        }
+    }
+
+    /** Windows Look & Feel can paint a white native combo while the generic
+     * theme has already changed its text to near-white. Use a reversible Basic
+     * UI + explicit list renderer in dark mode only. Restore the exact original
+     * UI and renderer when returning to light mode. */
+    private static final String COMBO_UI = "pawtrack.originalComboUI";
+    private static final String COMBO_RENDERER = "pawtrack.originalComboRenderer";
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static void applyComboContrast(JComboBox<?> combo, boolean dark) {
+        if (dark) {
+            if (combo.getClientProperty(COMBO_UI) == null) combo.putClientProperty(COMBO_UI, combo.getUI());
+            if (combo.getClientProperty(COMBO_RENDERER) == null)
+                combo.putClientProperty(COMBO_RENDERER, combo.getRenderer());
+            if (!(combo.getUI() instanceof MidnightComboBoxUI)) combo.setUI(new MidnightComboBoxUI());
+            if (!(combo.getRenderer() instanceof MidnightComboRenderer)) {
+                ListCellRenderer original = (ListCellRenderer) combo.getClientProperty(COMBO_RENDERER);
+                combo.setRenderer(new MidnightComboRenderer(original));
+            }
+            combo.setBackground(PawTrackTheme.DARK_INPUT);
+            combo.setForeground(PawTrackTheme.DARK_TEXT);
+        } else {
+            Object oldUI = combo.getClientProperty(COMBO_UI);
+            if (oldUI instanceof ComboBoxUI ui && combo.getUI() != ui) combo.setUI(ui);
+            Object renderer = combo.getClientProperty(COMBO_RENDERER);
+            if (renderer instanceof ListCellRenderer original && combo.getRenderer() != original)
+                combo.setRenderer(original);
+            combo.putClientProperty(COMBO_UI, null);
+            combo.putClientProperty(COMBO_RENDERER, null);
+        }
+    }
+
+    private static final class MidnightComboRenderer implements ListCellRenderer<Object> {
+        private final ListCellRenderer<Object> delegate;
+        MidnightComboRenderer(ListCellRenderer<Object> delegate) { this.delegate = delegate; }
+        @Override public Component getListCellRendererComponent(JList<? extends Object> list,
+                Object value, int index, boolean selected, boolean focused) {
+            Component cell = delegate.getListCellRendererComponent(list, value, index, selected, focused);
+            cell.setBackground(selected ? PawTrackTheme.DARK_SELECTED : PawTrackTheme.DARK_INPUT);
+            cell.setForeground(PawTrackTheme.DARK_TEXT);
+            if (cell instanceof JComponent jc) jc.setOpaque(true);
+            return cell;
+        }
+    }
+
+    private static final class MidnightComboBoxUI extends BasicComboBoxUI {
+        @Override protected JButton createArrowButton() {
+            BasicArrowButton arrow = new BasicArrowButton(SwingConstants.SOUTH,
+                    PawTrackTheme.DARK_INPUT, PawTrackTheme.DARK_BORDER,
+                    PawTrackTheme.DARK_MUTED, PawTrackTheme.DARK_BORDER);
+            arrow.setBorder(BorderFactory.createEmptyBorder(0, 3, 0, 3));
+            return arrow;
+        }
+        @Override public void paintCurrentValueBackground(Graphics g, Rectangle bounds, boolean hasFocus) {
+            g.setColor(PawTrackTheme.DARK_INPUT);
+            g.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+        }
+    }
+
+    /** OptionPane confirmation buttons are created after the theme switch and
+     * may retain Windows' white native fill with white text. Change only those
+     * buttons, leaving every app-specific rounded button untouched. */
+    private static final String OPTION_UI = "pawtrack.originalOptionButtonUI";
+    private static void applyOptionButtonContrast(JButton button, boolean dark) {
+        if (dark) {
+            if (button.getClientProperty(OPTION_UI) == null) button.putClientProperty(OPTION_UI, button.getUI());
+            if (!(button.getUI() instanceof BasicButtonUI)) button.setUI(new BasicButtonUI());
+            button.setContentAreaFilled(true);
+            button.setOpaque(true);
+            button.setBackground(PawTrackTheme.DARK_INPUT);
+            button.setForeground(PawTrackTheme.DARK_TEXT);
+        } else {
+            if (button.getClientProperty(OPTION_UI) instanceof ButtonUI ui) {
+                button.setUI(ui);
+                button.putClientProperty(OPTION_UI, null);
+            }
         }
     }
 

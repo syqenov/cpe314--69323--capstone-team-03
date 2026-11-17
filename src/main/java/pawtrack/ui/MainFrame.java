@@ -525,8 +525,6 @@ public final class MainFrame extends JFrame {
             toolbar.add(button("Undo Last Status Change", this::onUndo, "Undo the last status change (Ctrl+U)"));
             toolbar.add(Box.createVerticalStrut(16));
         }
-        toolbar.add(button("Fetch Sample Pet Image", this::onFetchImage, "Fetch a sample image for the selected animal"));
-        toolbar.add(Box.createVerticalStrut(16));
 
         // Quick search filter
         javax.swing.JTextField searchField = new javax.swing.JTextField();
@@ -801,10 +799,6 @@ public final class MainFrame extends JFrame {
             contextMenu.add(undoItem);
         }
 
-        JMenuItem fetchImageItem = new JMenuItem("Fetch Sample Image");
-        fetchImageItem.addActionListener(e -> onFetchImage());
-        contextMenu.add(fetchImageItem);
-
         contextMenu.addSeparator();
 
         JMenuItem refreshItem = new JMenuItem("Refresh");
@@ -864,15 +858,8 @@ public final class MainFrame extends JFrame {
             animalActions.add(actionButtons, BorderLayout.EAST);
             workspace.add(animalActions, BorderLayout.NORTH);
         }
-        JPanel preview = buildImagePanel();
-        samplePreviewContainer = preview;
-        preview.setPreferredSize(new Dimension(296, 0));
-        preview.setMinimumSize(new Dimension(260, 0));
-        preview.setName("animalSamplePreview");
-        preview.setVisible(false);
-        workspace.add(preview, BorderLayout.EAST);
-        // No redundant "Show sample image" button. The optional sample preview
-        // still opens automatically when Fetch Sample Pet Image is requested.
+        // Browse Pets and Pet Profile already show cached/uploaded/API photos.
+        // Do not reserve space for the obsolete duplicate sample-image sidebar.
         return workspace;
     }
 
