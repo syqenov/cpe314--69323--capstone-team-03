@@ -80,16 +80,16 @@ public final class MainFrame extends JFrame {
     // Private helper for MainFrame GUI logic
     private static final Dimension IMAGE_SIZE = new Dimension(260, 250);
     // PawTrack's existing blue identity, refined with softer surfaces and navy accents.
-    private static final Color PANEL_BLUE = new Color(0xF5F8FD);
-    private static final Color TABLE_BLUE = new Color(0xF7FBFF);
+    private static final Color PANEL_BLUE = PawTrackTheme.CANVAS;
+    private static final Color TABLE_BLUE = PawTrackTheme.SURFACE;
     private static final Color TOOLBAR_BLUE = new Color(0xA5C9E7);
-    private static final Color PRIMARY_BLUE = new Color(0x2E608C);
-    private static final Color HOVER_BLUE = new Color(0x3E79A8);
-    private static final Color NAVY_BLUE = new Color(0x1D3F5C);
-    private static final Color BORDER_BLUE = new Color(0x8FB8DA);
-    private static final Color ALT_ROW_BLUE = new Color(0xE8F2FA);
-    private static final Color TAB_COLOR = new Color(0x28486F);
-    private static final Color TAB_SELECTED_COLOR = new Color(0x315FAD);
+    private static final Color PRIMARY_BLUE = PawTrackTheme.BLUE;
+    private static final Color HOVER_BLUE = PawTrackTheme.BLUE_HOVER;
+    private static final Color NAVY_BLUE = PawTrackTheme.NAVY;
+    private static final Color BORDER_BLUE = PawTrackTheme.LINE;
+    private static final Color ALT_ROW_BLUE = PawTrackTheme.ALT_ROW;
+    private static final Color TAB_COLOR = PawTrackTheme.SIDEBAR_BUTTON;
+    private static final Color TAB_SELECTED_COLOR = PawTrackTheme.BLUE;
     private static final java.awt.Font BODY_FONT = new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 13);
     private static final java.awt.Font LABEL_FONT = new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13);
     private static final java.util.logging.Logger LOGGER =
@@ -114,8 +114,11 @@ public final class MainFrame extends JFrame {
     private final pawtrack.service.AdopterNotificationService notificationService;
     private final pawtrack.service.NotificationReadService notificationReadService;
     private final pawtrack.service.AccountSettingsService accountSettingsService;
+    private final pawtrack.service.AdoptionApplicationService adoptionApplicationService;
+    private final pawtrack.service.AccountPreferencesService accountPreferencesService;
     private final pawtrack.service.ApplicationReviewService applicationReviewService;
     private PawTrackHeader applicationHeader;
+    private AccountSettingsPanel appearanceSettingsPanel;
     private final pawtrack.service.MyApplicationStatusService myApplicationStatusService;
     private final java.util.List<WaitlistController.WaitlistRequest> displayedWaitlist = new java.util.ArrayList<>();
     private final AnalyticsController analyticsController;
@@ -139,6 +142,13 @@ public final class MainFrame extends JFrame {
     private String currentTab;
     private JPanel contentPanel;
     private PawTrackDashboard dashboardPanel;
+    // UI refresh requests run in SwingWorker; Swing state is changed only from done() on the EDT.
+    private boolean finishedInitializing;
+    private int dashboardRefreshVersion;
+    private int waitlistRefreshVersion;
+    private SwingWorker<DashboardData, Void> dashboardRefreshWorker;
+    private SwingWorker<List<WaitlistDisplayRow>, Void> waitlistRefreshWorker;
+    private boolean dashboardRefreshPending;
     private final java.util.List<RoundedUi.RoundedButton> tabButtons = new java.util.ArrayList<>();
     private final java.util.List<String> tabNames = new java.util.ArrayList<>();
     private JPanel toolbar;
@@ -169,6 +179,7 @@ public final class MainFrame extends JFrame {
     private final JLabel connectionStatusLabel = new JLabel("● Connected");
     // Private helper for MainFrame GUI logic
     private boolean darkMode = false;
+    private final java.util.concurrent.atomic.AtomicLong appearanceChangeId = new java.util.concurrent.atomic.AtomicLong();
     // Private helper for MainFrame GUI logic
     private JPanel statusBar;
     // Private helper for MainFrame GUI logic
@@ -213,6 +224,8 @@ public final class MainFrame extends JFrame {
         this.notificationService = wired.notifications;
         this.notificationReadService = wired.notificationReads;
         this.accountSettingsService = wired.accountSettings;
+        this.adoptionApplicationService = wired.adoptionApplications;
+        this.accountPreferencesService = wired.accountPreferences;
         this.applicationReviewService = wired.applicationReviews;
         this.myApplicationStatusService = wired.myApplications;
         this.analyticsController = wired.analytics;
@@ -223,12 +236,18 @@ public final class MainFrame extends JFrame {
        
         animalTable.setAutoCreateRowSorter(true);
 
+        // Restore the authenticated account's appearance; no global OS setting changes.
+        try { darkMode = "Dark".equalsIgnoreCase(accountPreferencesService.get("theme", "Light")); }
+        catch (SQLException e) { LOGGER.log(java.util.logging.Level.WARNING, "Could not load theme preference", e); }
+        PawTrackTheme.setDark(darkMode);
         buildUi();
+        PawTrackThemeManager.apply(this, darkMode);
         populateClassificationFilter();
         refreshAnimals();
 
         refreshAnalytics();
         refreshDashboard();
+        finishedInitializing = true;
 
         log("Database ready");
         log(String.format("Classification tree loaded: %d nodes, depth %d",
@@ -259,6 +278,12 @@ public final class MainFrame extends JFrame {
             javax.swing.UIManager.put("ComboBox.font", BODY_FONT);
 
             setupKeyboardShortcuts();
+            getRootPane().getInputMap(javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW).put(
+                    KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_T,
+                            java.awt.event.InputEvent.CTRL_DOWN_MASK), "toggleWorkspaceTheme");
+            getRootPane().getActionMap().put("toggleWorkspaceTheme", new javax.swing.AbstractAction() {
+                @Override public void actionPerformed(java.awt.event.ActionEvent e) { toggleTheme(); }
+            });
 
         // Keep a small gap between the panel content and its scrollbar.
         JPanel toolbarHolder = new JPanel(new BorderLayout());
@@ -296,6 +321,7 @@ public final class MainFrame extends JFrame {
         }
         if (user.getRole() == Role.ADOPTER) {
             addTabButton("My Records", buildMyRecordsTab());
+            addTabButton("My Applications", new AdoptionApplicationsPanel(adoptionApplicationService, false));
             refreshMyRecords();
         }
         if (user.getRole() == Role.STAFF) {
@@ -303,8 +329,10 @@ public final class MainFrame extends JFrame {
         }
         // Keep every legacy action accessible on its own workspace page instead of
         // squeezing the navigation sidebar. No controller behavior is removed.
-        addTabButton("Tools & Settings", new PawTrackToolsPanel(toolbarScroll, () -> selectTab("Account Settings")));
-        addTabButton("Account Settings", new AccountSettingsPanel(sessionAuth, accountSettingsService));
+        addTabButton("Tools & Settings", new PawTrackToolsPanel(toolbarScroll, () -> selectTab("Account Settings"), this::toggleTheme));
+        appearanceSettingsPanel = new AccountSettingsPanel(sessionAuth, accountSettingsService,
+                accountPreferencesService, this::changeAppearanceFromPreferences);
+        addTabButton("Account Settings", appearanceSettingsPanel);
         add(contentPanel, BorderLayout.CENTER);
         add(new PawTrackSidebar(tabButtons, toolbarScroll, true, user.getRole() == Role.STAFF,
         () -> { if (onLogout != null) onLogout.run(); }), BorderLayout.WEST);
@@ -314,6 +342,7 @@ public final class MainFrame extends JFrame {
                     try { return notificationReadService.unreadCount(); }
                     catch (SQLException error) { return 0; }
                 });
+        applicationHeader.setAppearanceAction(this::toggleTheme, () -> darkMode);
         add(applicationHeader, BorderLayout.NORTH);
         if (!tabNames.isEmpty()) {
             selectTab(tabNames.get(0));
@@ -424,7 +453,12 @@ public final class MainFrame extends JFrame {
                 () -> {
                     if (applicationHeader != null) applicationHeader.refreshNotificationBadge();
                 },
-                this::refreshDashboard);
+                this::refreshDashboardOnNavigation);
+        if (darkMode) {
+            for (int i = 0; i < tabButtons.size(); i++)
+                tabButtons.get(i).setBaseColor(tabNames.get(i).equals(title)
+                        ? PawTrackTheme.DARK_SELECTED : PawTrackTheme.DARK_HOVER);
+        }
     }
 
     // Private helper for MainFrame GUI logic
@@ -897,9 +931,11 @@ public final class MainFrame extends JFrame {
             setOpaque(true);
             setFont(BODY_FONT);
             setBorder(BorderFactory.createEmptyBorder(4, 7, 4, 7));
-            setForeground(NAVY_BLUE);
-            setBackground(isSelected ? new Color(0xC5DFF3)
-                    : (rowStripingEnabled && row % 2 == 0 ? Color.WHITE : ALT_ROW_BLUE));
+            setForeground(darkMode ? PawTrackTheme.DARK_TEXT : NAVY_BLUE);
+            setBackground(darkMode ? (isSelected ? PawTrackTheme.DARK_SELECTED
+                    : (rowStripingEnabled && row % 2 == 0 ? PawTrackTheme.DARK_SURFACE : PawTrackTheme.DARK_INPUT))
+                    : (isSelected ? new Color(0xC5DFF3)
+                    : (rowStripingEnabled && row % 2 == 0 ? Color.WHITE : ALT_ROW_BLUE)));
             if (column == 0 || column >= 2) {
                 setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
             } else {
@@ -1101,71 +1137,54 @@ public final class MainFrame extends JFrame {
         return button;
     }
 
-    /** Toggles between light and dark theme. */
-    private void toggleTheme() {
-        darkMode = !darkMode;
-        Color bg = darkMode ? new Color(0x1E1E1E) : PANEL_BLUE;
-        Color fg = darkMode ? Color.WHITE : NAVY_BLUE;
-        Color panelBg = darkMode ? new Color(0x2D2D2D) : PANEL_BLUE;
-        Color tableBg = darkMode ? new Color(0x3C3C3C) : TABLE_BLUE;
-        Color altRow = darkMode ? new Color(0x333333) : ALT_ROW_BLUE;
-        Color border = darkMode ? new Color(0x444444) : BORDER_BLUE;
-        Color toolbarBg = darkMode ? new Color(0x252525) : TOOLBAR_BLUE;
+    /** All theme entry points share one reversible painter and one saved preference. */
+    private void toggleTheme() { setAppearance(!darkMode, true); }
 
-        getContentPane().setBackground(bg);
-        setBackground(bg);
-        contentPanel.setBackground(bg);
-        toolbar.setBackground(toolbarBg);
-        imagePanel.setBackground(bg);
-        analyticsPanel.setBackground(bg);
-        logArea.setBackground(bg);
-        logArea.setForeground(fg);
-        statusBar.setBackground(bg);
-        statusLabel.setForeground(fg);
-        connectionStatusLabel.setForeground(fg);
-        animalTable.setBackground(tableBg);
-        animalTable.setForeground(fg);
-        animalTable.setGridColor(border);
-        animalTable.setSelectionBackground(darkMode ? new Color(0x555555) : new Color(0xC5DFF3));
-        animalTable.setSelectionForeground(fg);
-        imageLabel.setBackground(darkMode ? new Color(0x3C3C3C) : new Color(0xEAF3FA));
-        imageLabel.setForeground(fg);
-        imageInfoLabel.setForeground(fg);
-        previewCard.setBackground(darkMode ? new Color(0x2D2D2D) : new Color(0xF7FBFF));
-        userProfilePanel.setBackground(darkMode ? new Color(0x333333) : new Color(0xD8EAF7));
-        caption.setForeground(darkMode ? new Color(0xAAAAAA) : new Color(0x52738D));
-        username.setForeground(fg);
-        role.setForeground(PRIMARY_BLUE);
-        statusBar.setBackground(bg);
-        statusLabel.setForeground(fg);
-        classificationFilter.setBackground(darkMode ? new Color(0x3C3C3C) : new Color(0xF7FBFF));
-        classificationFilter.setForeground(fg);
-        progressBar.setForeground(darkMode ? new Color(0x4A90D9) : PRIMARY_BLUE);
-        spinner.stop(); // Reset spinner color
-        // Re-apply cell renderers
-        animalTable.setDefaultRenderer(Object.class, new BlueTableRenderer());
-        animalTable.setDefaultRenderer(Number.class, new BlueTableRenderer());
-        animalTable.repaint();
-        logArea.setCaretColor(fg);
-        if (myRecordsArea != null) {
-            myRecordsArea.setBackground(bg);
-            myRecordsArea.setForeground(fg);
-        }
-        if (waitlistTable != null) {
-            waitlistTable.setBackground(tableBg);
-            waitlistTable.setForeground(fg);
-        }
-        statusFilter.closePopup(); // Close themed popup when switching appearance
+    private void changeAppearanceFromPreferences(Boolean useDark) {
+        setAppearance(Boolean.TRUE.equals(useDark), false); // Already saved by settings page.
+    }
 
-        // Update tab button colors
+    private void setAppearance(boolean useDark, boolean persist) {
+        if (!javax.swing.SwingUtilities.isEventDispatchThread()) {
+            javax.swing.SwingUtilities.invokeLater(() -> setAppearance(useDark, persist));
+            return;
+        }
+        long change = appearanceChangeId.incrementAndGet();
+        if (persist) {
+            // The CSV worker may hold the same SQLite connection transaction lock;
+            // never wait for that lock on the Swing Event Dispatch Thread.
+            new javax.swing.SwingWorker<Void, Void>() {
+                @Override protected Void doInBackground() throws Exception {
+                    synchronized (database) {
+                        if (change == appearanceChangeId.get())
+                            accountPreferencesService.put("theme", useDark ? "Dark" : "Light");
+                    }
+                    return null;
+                }
+                @Override protected void done() {
+                    try { get(); }
+                    catch (Exception failure) {
+                        java.util.logging.Logger.getLogger(MainFrame.class.getName()).log(
+                                java.util.logging.Level.WARNING, "Could not save theme preference", failure);
+                        JOptionPane.showMessageDialog(MainFrame.this,
+                                "Theme changed for this session, but could not be saved. Please try again.",
+                                "Theme preference", JOptionPane.WARNING_MESSAGE);
+                    }
+                }
+            }.execute();
+        }
+        darkMode = useDark;
+        statusFilter.closePopup();
+        PawTrackThemeManager.apply(this, useDark);
+        if (applicationHeader != null) applicationHeader.refreshAppearanceButton();
+        if (appearanceSettingsPanel != null) appearanceSettingsPanel.setAppearanceSelection(useDark);
         for (int i = 0; i < tabButtons.size(); i++) {
-            RoundedUi.RoundedButton btn = tabButtons.get(i);
-             btn.setBaseColor(tabNames.get(i).equals(currentTab) ? TAB_SELECTED_COLOR :
-            (darkMode ? new Color(0x3D3D3D) : TAB_COLOR));
+            tabButtons.get(i).setBaseColor(tabNames.get(i).equals(currentTab)
+                    ? (useDark ? PawTrackTheme.DARK_SELECTED : TAB_SELECTED_COLOR)
+                    : (useDark ? PawTrackTheme.DARK_HOVER : TAB_COLOR));
         }
-
+        animalTable.repaint();
         repaint();
-        revalidate();
     }
 
     // ------------------------------------------------------------- actions
@@ -1238,12 +1257,21 @@ public final class MainFrame extends JFrame {
         }
         PetProfilePanel profile = new PetProfilePanel(animal, user.getRole() == Role.STAFF);
         if (user.getRole() == Role.ADOPTER && animal.getStatus() != AnimalStatus.ADOPTED) {
-            int choice = JOptionPane.showConfirmDialog(this, profile,
-                    "Pet profile â€” Record interest?", JOptionPane.OK_CANCEL_OPTION,
-                    JOptionPane.PLAIN_MESSAGE);
-            if (choice == JOptionPane.OK_OPTION) {
-                onRecordInterest();
-            }
+            Object[] options = {"Apply for Adoption", "Record Interest", "Close"};
+            int choice = JOptionPane.showOptionDialog(this, profile, "Pet profile",
+                    JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
+            if (choice == 0) {
+                try {
+                    Adopter me = resolveMyAdopter();
+                    if (me == null) { warn("Please sign in with a linked adopter account."); return; }
+                    if (adoptionApplicationService.hasActive(animal.getId())) {
+                        info("An active application already exists for this pet. Open My Applications to view it.");
+                        selectTab("My Applications");
+                        return;
+                    }
+                    AdoptionApplicationDialog.show(this, animal, me, adoptionApplicationService);
+                } catch (Exception failure) { error("Could not open application", failure); }
+            } else if (choice == 1) { onRecordInterest(); }
         } else {
             JOptionPane.showMessageDialog(this, profile, "Pet profile", JOptionPane.PLAIN_MESSAGE);
         }
@@ -1384,7 +1412,7 @@ public final class MainFrame extends JFrame {
     // Private helper for MainFrame GUI logic
     private JPanel buildWaitlistTab() {
         WaitlistPanel panel = new WaitlistPanel(PANEL_BLUE, PRIMARY_BLUE, BORDER_BLUE,
-                button("Refresh Waitlist", this::refreshWaitlist),
+                button("Refresh Waitlist", this::refreshWaitlistAsync),
                 button("Reserve First in Queue", this::onReserveFirst),
                 button("Complete Selected Adoption", this::onCompleteReserved),
                 button("Cancel Reservation", this::onCancelReservation),
@@ -1392,44 +1420,106 @@ public final class MainFrame extends JFrame {
         waitlistPanel = panel;
         waitlistModel = panel.getTableModel();
         waitlistTable = panel.getTable();
-        return panel;
+        javax.swing.JTabbedPane requestTabs = new javax.swing.JTabbedPane();
+        requestTabs.addTab("FIFO Waitlist & Reservations", panel);
+        requestTabs.addTab("Adoption Applications", new AdoptionApplicationsPanel(adoptionApplicationService, true));
+        JPanel container = new JPanel(new BorderLayout());
+        container.add(requestTabs, BorderLayout.CENTER);
+        return container;
     }
-    // Private helper for MainFrame GUI logic
-    private void refreshWaitlist() {
-        if (waitlistModel == null) {
-            return;
+    /** A detached row snapshot: database reads stay separate from Swing table mutations. */
+    private record WaitlistDisplayRow(WaitlistController.WaitlistRequest request, Object[] values) { }
+
+    private List<WaitlistDisplayRow> readWaitlistRows() throws SQLException {
+        // Preserve a consistent snapshot while an import, reservation, or queue
+        // position update owns the single SQLite connection.
+        synchronized (database) {
+            return readWaitlistRowsUnderDatabaseLock();
         }
+    }
+
+    private List<WaitlistDisplayRow> readWaitlistRowsUnderDatabaseLock() throws SQLException {
+        List<WaitlistDisplayRow> rows = new ArrayList<>();
+        for (WaitlistController.WaitlistRequest req : waitlistController.getRequests()) {
+            var latest = reservationService.latestForApplicant(
+                    req.animal().getId(), req.adopter().getId());
+            String review = latest.isEmpty()
+                    ? applicationReviewService.get(req.animal().getId(), req.adopter().getId())
+                            .map(pawtrack.service.ApplicationReviewService.Review::status).orElse("WAITING")
+                    : switch (latest.get().status()) {
+                case "ACTIVE" -> "RESERVED";
+                case "EXPIRED", "CANCELLED", "COMPLETED" -> latest.get().status();
+                default -> "WAITING";
+            };
+            rows.add(new WaitlistDisplayRow(req, new Object[]{
+                    req.animal().getName() + " (" + req.animal().species().label() + ")",
+                    req.adopter().getName(),
+                    req.adopter().getEmail(),
+                    req.requestedAt().toLocalDate(),
+                    req.position(),
+                    review
+            }));
+        }
+        return rows;
+    }
+
+    /** Must run on the Swing EDT: one atomic replacement preserves row-to-request mapping. */
+    private void showWaitlistRows(List<WaitlistDisplayRow> rows) {
+        if (waitlistModel == null) return;
         waitlistModel.setRowCount(0);
         displayedWaitlist.clear();
-        try {
-            for (WaitlistController.WaitlistRequest req : waitlistController.getRequests()) {
-                displayedWaitlist.add(req);
-                var latest = reservationService.latestForApplicant(
-                        req.animal().getId(), req.adopter().getId());
-                String review = latest.isEmpty()
-                        ? applicationReviewService.get(req.animal().getId(), req.adopter().getId())
-                                .map(pawtrack.service.ApplicationReviewService.Review::status).orElse("WAITING")
-                        : switch (latest.get().status()) {
-                    case "ACTIVE" -> "RESERVED";
-                    case "EXPIRED", "CANCELLED", "COMPLETED" -> latest.get().status();
-                    default -> "WAITING";
-                };
-                waitlistModel.addRow(new Object[]{
-                        req.animal().getName() + " (" + req.animal().species().label() + ")",
-                        req.adopter().getName(),
-                        req.adopter().getEmail(),
-                        req.requestedAt().toLocalDate(),
-                        req.position(),
-                        review
-                });
-                if (waitlistPanel != null) {
-                    waitlistPanel.registerAnimalForRow(waitlistModel.getRowCount() - 1, req.animal());
-                }
+        for (WaitlistDisplayRow row : rows) {
+            displayedWaitlist.add(row.request());
+            waitlistModel.addRow(row.values());
+            if (waitlistPanel != null) {
+                waitlistPanel.registerAnimalForRow(waitlistModel.getRowCount() - 1,
+                        row.request().animal());
             }
-            statusLabel.setText("Waitlist: " + waitlistModel.getRowCount() + " request(s)");
+        }
+        statusLabel.setText("Waitlist: " + rows.size() + " request(s)");
+    }
+
+    /** Immediate refresh retained for startup and staff actions that require current rows. */
+    private void refreshWaitlist() {
+        if (waitlistModel == null) return;
+        ++waitlistRefreshVersion; // Invalidate any older asynchronous result.
+        try {
+            showWaitlistRows(readWaitlistRows());
         } catch (SQLException failure) {
             error("Could not load the waitlist", failure);
         }
+    }
+
+    /** User-triggered refresh: queries run off the EDT, Swing updates run in done(). */
+    private void refreshWaitlistAsync() {
+        if (waitlistModel == null) return;
+        if (waitlistRefreshWorker != null && !waitlistRefreshWorker.isDone()) {
+            statusLabel.setText("Waitlist refresh already in progress...");
+            return;
+        }
+        final int version = ++waitlistRefreshVersion;
+        statusLabel.setText("Refreshing waitlist...");
+        waitlistRefreshWorker = new SwingWorker<>() {
+            @Override protected List<WaitlistDisplayRow> doInBackground() throws Exception {
+                return readWaitlistRows();
+            }
+            @Override protected void done() {
+                if (version != waitlistRefreshVersion || !isDisplayable()) return;
+                try {
+                    showWaitlistRows(get());
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    statusLabel.setText("Waitlist refresh interrupted");
+                } catch (java.util.concurrent.ExecutionException failure) {
+                    Throwable cause = failure.getCause();
+                    error("Could not load the waitlist", cause instanceof Exception
+                            ? (Exception) cause : failure);
+                } catch (java.util.concurrent.CancellationException cancelled) {
+                    statusLabel.setText("Waitlist refresh cancelled");
+                }
+            }
+        };
+        waitlistRefreshWorker.execute();
     }
 
     /** Staff application details for the selected, currently loaded waitlist row. */
@@ -1465,9 +1555,7 @@ public final class MainFrame extends JFrame {
                     : active.isPresent() || request.animal().getStatus() == AnimalStatus.ADOPTED
                         ? new Object[] { "Close" }
                         : new Object[] { "Start Review", "Reserve First in Queue", "Close" };
-            int choice = JOptionPane.showOptionDialog(this, details, "Review Adoption Application",
-                    JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE, null, choices,
-                    choices[choices.length - 1]);
+            int choice = PawTrackReviewDialog.show(this, details, choices);
             // Delegate all writes to existing secured actions with their own checks/confirmations.
             if (selectedReserved) {
                 if (choice == 0) onCompleteReserved();
@@ -1660,7 +1748,7 @@ public final class MainFrame extends JFrame {
             int id = selectedAnimalId != null ? selectedAnimalId : Integer.parseInt(selected.substring(1, selected.indexOf(" — ")));
             if (JOptionPane.showConfirmDialog(this, "Withdraw your interest in animal #" + id + "?",
                     "Confirm withdrawal", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
-            waitlistController.withdrawMyInterest(id, new pawtrack.dao.ReservationDao(database));
+            waitlistController.withdrawMyInterest(id);
             refreshMyRecords(); refreshAnimals();
             statusLabel.setText("Interest withdrawn");
         } catch (SQLException | RuntimeException failure) {
@@ -1891,40 +1979,118 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    /** Refresh dashboard using data accessible to the current role. */
+    /** Immutable data used to populate the dashboard once a background read completes. */
+    private record DashboardData(List<Animal> animals, int requests,
+                                 AnalyticsController.AnalyticsSnapshot summary,
+                                 List<AdoptionRecord> monthlyAdoptions,
+                                 int adopterWaiting, int adopterAdopted) { }
+
+    /** Queries only; never reads or writes Swing widgets. */
+    private DashboardData readDashboardData(List<Animal> animals, int requests) {
+        // Background dashboard refreshes must not read the shared connection
+        // partway through a transaction that holds the same database lock.
+        synchronized (database) {
+            return readDashboardDataUnderDatabaseLock(animals, requests);
+        }
+    }
+
+    private DashboardData readDashboardDataUnderDatabaseLock(List<Animal> animals, int requests) {
+        if (user.getRole() == Role.STAFF) {
+            AnalyticsController.AnalyticsSnapshot summary = analyticsController.compute();
+            List<AdoptionRecord> monthly = null;
+            try {
+                monthly = adoptionController.allAdoptionsForStaff();
+            } catch (SQLException failure) {
+                LOGGER.log(java.util.logging.Level.WARNING,
+                        "Could not load adoption trend", failure);
+            }
+            return new DashboardData(animals, requests, summary, monthly, 0, 0);
+        }
+        try {
+            Adopter me = resolveMyAdopter();
+            int waiting = me == null ? 0 : waitlistController.findByAdopterId(me.getId()).size();
+            int adopted = me == null ? 0 : adoptionController.findAdoptionsByAdopterId(me.getId()).size();
+            return new DashboardData(animals, requests, null, null, waiting, adopted);
+        } catch (SQLException failure) {
+            LOGGER.log(java.util.logging.Level.WARNING,
+                    "Could not refresh adopter overview", failure);
+            return new DashboardData(animals, requests, null, null, 0, 0);
+        }
+    }
+
+    /** Swing-only rendering. Keeps existing KPI formulas and role boundaries unchanged. */
+    private void showDashboardData(DashboardData data) {
+        if (dashboardPanel == null) return;
+        List<Animal> animals = data.animals();
+        int total = animals.size();
+        dashboardPanel.setAnimalSnapshot(animals);
+        if (user.getRole() == Role.STAFF) {
+            int available = (int) animals.stream()
+                    .filter(a -> a.getStatus() == AnimalStatus.AVAILABLE).count();
+            dashboardPanel.setStats(total, available, data.requests());
+            AnalyticsController.AnalyticsSnapshot summary = data.summary();
+            if (summary != null && summary.report() != null) {
+                dashboardPanel.setStaffKpis(summary.report().totalAdoptions(),
+                        summary.report().averageStayDaysOverall(), data.requests());
+            } else {
+                dashboardPanel.setStaffKpis((int) animals.stream()
+                        .filter(a -> a.getStatus() == AnimalStatus.ADOPTED).count(),
+                        Double.NaN, data.requests());
+            }
+            if (data.monthlyAdoptions() != null) {
+                dashboardPanel.setMonthlyAdoptions(data.monthlyAdoptions());
+            }
+        } else {
+            dashboardPanel.setStats(total, data.adopterWaiting(), data.adopterAdopted());
+        }
+    }
+
+    /** Startup path: still synchronous, so the initial dashboard is populated immediately. */
     private void refreshDashboard() {
         if (dashboardPanel == null) return;
-        int total = animalController.getAnimals().size();
-        dashboardPanel.setAnimalSnapshot(animalController.getAnimals());
-        if (user.getRole() == Role.STAFF) {
-            int available = (int) animalController.getAnimals().stream()
-                    .filter(a -> a.getStatus() == AnimalStatus.AVAILABLE).count();
-            int requests = waitlistModel == null ? 0 : waitlistModel.getRowCount();
-            dashboardPanel.setStats(total, available, requests);
-            // Actual SQLite adoption statistics, not screenshot sample values.
-            AnalyticsController.AnalyticsSnapshot summary = analyticsController.compute();
-            if (summary.report() != null) {
-                dashboardPanel.setStaffKpis(summary.report().totalAdoptions(),
-                        summary.report().averageStayDaysOverall(), requests);
-            } else {
-                dashboardPanel.setStaffKpis((int) animalController.getAnimals().stream()
-                        .filter(a -> a.getStatus() == AnimalStatus.ADOPTED).count(),
-                        Double.NaN, requests);
-            }
-            try { dashboardPanel.setMonthlyAdoptions(adoptionController.allAdoptionsForStaff()); }
-            catch (SQLException error) { LOGGER.log(java.util.logging.Level.WARNING,
-                    "Could not load adoption trend", error); }
-        } else {
-            try {
-                Adopter me = resolveMyAdopter();
-                int waiting = me == null ? 0 : waitlistController.findByAdopterId(me.getId()).size();
-                int adopted = me == null ? 0 : adoptionController.findAdoptionsByAdopterId(me.getId()).size();
-                dashboardPanel.setStats(total, waiting, adopted);
-            } catch (SQLException e) {
-                dashboardPanel.setStats(total, 0, 0);
-                LOGGER.log(java.util.logging.Level.WARNING, "Could not refresh adopter overview", e);
-            }
+        List<Animal> animals = List.copyOf(animalController.getAnimals());
+        int requests = waitlistModel == null ? 0 : waitlistModel.getRowCount();
+        showDashboardData(readDashboardData(animals, requests));
+    }
+
+    /** Dashboard tab navigation no longer runs analytics SQL on the Swing EDT. */
+    private void refreshDashboardOnNavigation() {
+        // The constructor invokes selectTab() before the initial synchronous refresh.
+        if (!finishedInitializing || dashboardPanel == null) return;
+        if (dashboardRefreshWorker != null && !dashboardRefreshWorker.isDone()) {
+            dashboardRefreshPending = true;
+            return;
         }
+        final int version = ++dashboardRefreshVersion;
+        final List<Animal> animals = List.copyOf(animalController.getAnimals());
+        final int requests = waitlistModel == null ? 0 : waitlistModel.getRowCount();
+        dashboardRefreshWorker = new SwingWorker<>() {
+            @Override protected DashboardData doInBackground() {
+                return readDashboardData(animals, requests);
+            }
+            @Override protected void done() {
+                try {
+                    if (version == dashboardRefreshVersion && isDisplayable()) {
+                        showDashboardData(get());
+                    }
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    LOGGER.log(java.util.logging.Level.WARNING,
+                            "Dashboard refresh interrupted", interrupted);
+                } catch (java.util.concurrent.ExecutionException failure) {
+                    LOGGER.log(java.util.logging.Level.WARNING,
+                            "Dashboard refresh failed", failure.getCause());
+                } catch (java.util.concurrent.CancellationException cancelled) {
+                    LOGGER.fine("Dashboard refresh cancelled");
+                } finally {
+                    if (dashboardRefreshPending && isDisplayable()) {
+                        dashboardRefreshPending = false;
+                        refreshDashboardOnNavigation();
+                    }
+                }
+            }
+        };
+        dashboardRefreshWorker.execute();
     }
 
     // Private helper for MainFrame GUI logic

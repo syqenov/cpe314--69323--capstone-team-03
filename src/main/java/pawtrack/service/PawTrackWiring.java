@@ -18,6 +18,8 @@ public final class PawTrackWiring {
     public final AdopterNotificationService notifications;
     public final NotificationReadService notificationReads;
     public final AccountSettingsService accountSettings;
+    public final AccountPreferencesService accountPreferences;
+    public final AdoptionApplicationService adoptionApplications;
     public final ApplicationReviewService applicationReviews;
     public final MyApplicationStatusService myApplications;
     public final AnalyticsController analytics;
@@ -47,8 +49,10 @@ public final class PawTrackWiring {
         notifications = new AdopterNotificationService(auth, reservationDao);
         notificationReads = new NotificationReadService(database, auth, reservationDao);
         accountSettings = new AccountSettingsService(auth, adopterDao);
+        accountPreferences = new AccountPreferencesService(database, auth);
+        adoptionApplications = new AdoptionApplicationService(database, auth);
         applicationReviews = new ApplicationReviewService(auth, database, reservationDao);
-        waitlists = new WaitlistController(waitlist, waitlistDao, adopterDao, animalDao, history, auth);
+        waitlists = new WaitlistController(waitlist, waitlistDao, adopterDao, animalDao, history, auth, reservationDao);
         analytics = new AnalyticsController(animalDao, recordDao, analyticsService, waitlist, classification);
         classifications = new ClassificationController(classification, animalDao);
         imports = new ImportController(database, classification, auth);
