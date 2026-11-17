@@ -1,113 +1,132 @@
 # Pet Shelter & Adoption Tracker
 ## Project Design Document
 
-| Field | Details | 
-| ----- | ----- | 
-| **Group Name / No.:** | *Group 3* | 
-| **Members:** |  | 
-|  | *Shann Michael Agang - UI Designer / Developer* | 
-|  | *Sofia Yvonne Enovero - Team Lead / Developer* | 
-|  | *Kyle Cheznie Taghoy - Quality Assurance* | 
-|  | *Aeisha Mae Elizar - Database Admin* | 
-|  | *Cleint Lausa - Developer* | 
-| **Instructor:** | Richyll Son | 
-| **Term:** | First Semester, S.Y. 2026-2027 | 
-| **Document Version / Date:** | *V 0.3 - 11/07/2026* | 
+| Field | Details |
+|---|---|
+| **Group Name / No.:** | **Group 3** |
+| **Members:** | |
+| | Shann Michael Agang — UI Designer / Developer |
+| | Sofia Yvonne Enovero — Team Lead / Developer |
+| | Kyle Cheznie Taghoy — Quality Assurance |
+| | Aeisha Mae Elizar — Database Admin |
+| | Cleint Lausa — Developer |
+| **Instructor:** | Richyll Son |
+| **Term:** | First Semester, S.Y. 2026–2027 |
+| **Document Version / Date:** | **V 0.4 — 11/17/2026** |
 
 <br>
 
 # Table of Contents
+# Table of Contents
 
-- Pet Shelter & Adoption Tracker  ........................................................................................................................................................... 1
-  - Table of Contents ................................................................................................................................................................... 2
-  - Revision History ...................................................................................................................................................................... 3
-  - 1. Introduction & Project Overview ............................................................................................................................ 3
-  - 2. Preliminary ER Sketch & Team Role ....................................................................................................................... 4
-    - Table 1: Preliminary entities and key attributes ................................................................................... 5
-    - Table 2: Preliminary relationships and cardinality ............................................................................... 5
-    - Table 3: Team members and primary roles ............................................................................................ 5
-  - 3. System Architecture & Object-Oriented Design ............................................................................................... 6
-    - 3.1 Class Hierarchy - PawTrack: Pet Shelter & Adoption Tracker .................................................. 6
-    - 3.2 Single Responsibility Principle Justification Table  ....................................................................... 6
-    - 3.3 Design Rationale: PawTrack ................................................................................................................. 8
-  - 4. Data Model & Database Design ............................................................................................................................. 9
-    - 4.1 ER Diagram ................................................................................................................................................ 9
-    - 4.2 SQLite schema .......................................................................................................................................... 9
-  - 5. API Integration Design.................................................................................................................................................10 
-    - 5.1 API 1: Dog CEO API (https://dog.ceo/dog-api/) .........................................................................10 
-    - 5.2 API 2: TheCatAPI (https://thecatapi.com/) ....................................................................................11 
-    - 5.3 Error Handling...........................................................................................................................................11 
-    - 5.4 Example JSON Responses.....................................................................................................................11 
-  - 6. Concurrency Design.......................................................................................................................................................12 
-    - 6.1 Background Operations.........................................................................................................................12 
-    - 6.2 How the Background Work Runs.......................................................................................................12 
-    - 6.3 Keeping the UI Responsive...................................................................................................................13 
-  - 7. Data Mining & Visualization Design.......................................................................................................................13 
-    - 7.1 Data Mining and Aggregation.............................................................................................................13 
-    - 7.2 Recursive Classification Analysis.........................................................................................................14 
-    - 7.3 Data Visualization.....................................................................................................................................14 
+- [Revision History](#revision-history)
+- [1. Introduction & Project Overview](#1-introduction--project-overview)
+- [2. Preliminary ER Sketch & Team Roles](#2-preliminary-er-sketch--team-roles)
+  - [2.1 Preliminary Entities and Key Attributes](#21-preliminary-entities-and-key-attributes)
+  - [2.2 Preliminary Relationships and Cardinality](#22-preliminary-relationships-and-cardinality)
+  - [2.3 Team Members and Primary Roles](#23-team-members-and-primary-roles)
+- [3. System Architecture & Object-Oriented Design](#3-system-architecture--object-oriented-design)
+  - [3.1 Class Hierarchy — PawTrack](#31-class-hierarchy---pawtrack-pet-shelter--adoption-tracker)
+  - [3.2 Single Responsibility Principle Justification Table](#32-single-responsibility-principle-justification-table)
+  - [3.3 Design Rationale: PawTrack](#33-design-rationale-pawtrack)
+- [4. Data Model & Database Design](#4-data-model--database-design)
+  - [4.1 ER Diagram](#41-er-diagram)
+  - [4.2 SQLite Schema](#42-sqlite-schema)
+- [5. API Integration Design](#5-api-integration-design)
+  - [5.1 API 1: Dog CEO API](#51-api-1-dog-ceo-api)
+  - [5.2 API 2: TheCatAPI](#52-api-2-thecatapi)
+  - [5.3 Error Handling](#53-error-handling)
+  - [5.4 Example JSON Responses](#54-example-json-responses)
+- [6. Concurrency Design](#6-concurrency-design)
+  - [6.1 Background Operations](#61-background-operations)
+  - [6.2 How the Background Work Runs](#62-how-the-background-work-runs)
+  - [6.3 Keeping the UI Responsive](#63-keeping-the-ui-responsive)
+- [7. Data Mining & Visualization Design](#7-data-mining--visualization-design)
+  - [7.1 Data Mining and Aggregation](#71-data-mining-and-aggregation)
+  - [7.2 Recursive Classification Analysis](#72-recursive-classification-analysis)
+  - [7.3 Data Visualization](#73-data-visualization)
+
    <br>
 ## Revision History
 
 | Version | Date | Author | Changes |
-| :---: | :--- | :--- | :--- |
-| 0.1 | Nov. 6, 2026 | Sofia Yvonne Enovero | Add section 1 One paragraph Pitch |
-| |  | Shann Michael Agang | Add Section 2 Entity-Relationship |
-|  |  | Kyle Cheznie Taghoy | Add ER Sketch |
-|  |  | Aeisha Mae Elizar | Update Section 2 Table 2 |
-|  |  | Cleint Lausa | Add Task Split Table |
-| 0.2 | Oct. 27, 2026 | Kyle Cheznie Taghoy | Add Class Hierarchy Diagram |
-| |  | Cleint Lausa | Update SRP Table |
-| |  | Aeisha Mae Elizar | Add Design Rationale |
-| |  | Sofia Yvonne Enovero | Update ER diagram |
-|  |  | Shann Michael Agang | Add Database SQL Schema |
-| 0.3 | Nov. 3, 2026 | Kyle Cheznie Taghoy | Add the subsection 5.1 and 5.2 table |
-|  |  | Aeisha Elizar | Add Error handling and json example |
-|  |  | Shann Michael Agang | Added Concurrency Design |
-|  |  | Sofia Yvonne Enovero | Add 7.1 table and 7.2 subsection |
-|  |  | Cleint Lausa | Add Data Visualization |
+|:---:|:---|:---|:---|
+| 0.1 | Nov. 6, 2026 | Sofia Yvonne Enovero | Added Section 1 — Introduction. |
+| | | Shann Michael Agang | Added Section 2 — Preliminary ER Design. |
+| | | Kyle Cheznie Taghoy | Updated preliminary ER sketch. |
+| | | Aeisha Mae Elizar | Updated Section 2 relationship table. |
+| | | Cleint Lausa | Added team responsibilities. |
+| 0.2 | Oct. 27, 2026 | Kyle Cheznie Taghoy | Added class hierarchy diagram. |
+| | | Cleint Lausa | Updated SRP justification table. |
+| | | Aeisha Mae Elizar | Added design rationale. |
+| | | Sofia Yvonne Enovero | Updated ER diagram. |
+| | | Shann Michael Agang | Added SQLite schema. |
+| 0.3 | Nov. 3, 2026 | Kyle Cheznie Taghoy | Added API integration tables. |
+| | | Aeisha Mae Elizar | Added error handling and JSON examples. |
+| | | Shann Michael Agang | Added concurrency design. |
+| | | Sofia Yvonne Enovero | Added data mining and aggregation. |
+| | | Cleint Lausa | Added data visualization. |
+| **0.4** | **Nov. 17, 2026** | Sofia Yvonne Enovero | Updated introduction and document formatting. |
+| | | Shann Michael Agang | Revised architecture and SRP tables. |
+| | | Aeisha Mae Elizar | Updated ERD and SQLite schema. |
+| | | Cleint Lausa | Revised concurrency and analytics sections. |
+| | | Kyle Cheznie Taghoy | Updated API integration, response examples, and error handling. |
+
 <br>
 
 ## 1. Introduction & Project Overview
 
-  The Pet Shelter & Adoption Tracker is a Java desktop application designed to help animal shelter staff manage intake, waitlists, and adoptions in one offline-first tool. Many small shelters rely on scattered spreadsheets and paper records, making it difficult to track animal stays and adoption demand. Our application centralizes these operations: it models species with distinct care schedules, manages adoption waitlists using queues, and enables status undo operations via a stack. Integrated pet APIs (Dog CEO API and TheCatAPI) provide sample pet images. Bulk historical CSV log imports and built-in analytics that render adoption trends and stay durations as bar charts are planned for Milestone 2.
+The Pet Shelter & Adoption Tracker (PawTrack) is a Java desktop application for animal shelters and prospective adopters. It centralizes animal profiles, adopter accounts, first-in-first-out (FIFO) waitlists, reservations, application reviews, adoption records, and shelter analytics. The project replaces scattered paper records and spreadsheets with a structured, locally stored workflow, while allowing adopters to browse animals, monitor their application status, and manage their account information.
+
+PawTrack supports dogs and cats through an object-oriented Animal hierarchy with species-specific adoption fees, senior-age thresholds, and care schedules. Staff can manage animal records, review adoption applications, manage reservations, finalize adoptions, import historical CSV records, and view shelter analytics. Adopters can register, browse available animals, express or withdraw adoption interest, monitor their applications and reservations, receive status notifications, and manage their profiles. The system also supports locally stored pet photographs and text-based adoption receipts.
+
+The application is developed using Java 17-compatible code, Swing, SQLite/JDBC, Maven, and JUnit 5. Core records and uploaded pet photographs are stored locally, while Dog CEO and TheCatAPI provide optional sample pet images that require an internet connection. Authentication uses salted PBKDF2 password hashing, and role-based access separates staff operations from adopter functions. The architecture separates domain models, data access, application services, controllers, and graphical interface components to support maintainability and the Single Responsibility Principle (SRP), although some responsibilities in MainFrame remain candidates for further refactoring.
 
 <br>
 
 ## 2. Preliminary ER Sketch & Team Roles
-![Priliminary ERD](./erd.png)
+## 2. Preliminary ER Sketch & Team Roles
 
-### Table 1: Preliminary Entities and Key Attributes
+### 2.1 Preliminary Entities and Key Attributes
 
-| Entity | Key Attributes |
-|---|---|
-| Classification | id (PK), name, parent_id (FK → Classification.id) |
-| Animal | id (PK), name, species, breed, age_months, intake_date, status, classification_id (FK → Classification.id) |
-| Adopter | id (PK), name, email (unique), phone |
-| AdoptionRecord | id (PK), animal_id (FK → Animal.id), adopter_id (FK → Adopter.id), adoption_date, fee_paid |
-| WaitlistEntry | id (PK), animal_id (FK → Animal.id), adopter_id (FK → Adopter.id), requested_at, position |
+**Table 1. Preliminary Entities and Key Attributes**
 
-### Table 2: Preliminary Relationships and Cardinality
+| Entity | Key Attributes | Description |
+|---|---|---|
+| Classification | id (PK), name, parent_id (FK → Classification.id, nullable) | Stores animal classifications and supports hierarchical parent-child relationships. |
+| Animal | id (PK), name, species, breed, age_months, intake_date, status, classification_id (FK → Classification.id) | Stores animal information, shelter intake details, current status, and classification. |
+| Adopter | id (PK), name, email (unique), phone | Stores information about individuals interested in adopting animals. |
+| AdoptionRecord | id (PK), animal_id (FK → Animal.id), adopter_id (FK → Adopter.id), adoption_date, fee_paid | Records completed adoption transactions and their associated animal and adopter. |
+| WaitlistEntry | id (PK), animal_id (FK → Animal.id), adopter_id (FK → Adopter.id), requested_at, position | Records adoption interest and maintains the order of prospective adopters for an animal. |
 
-| Parent Entity | Relationship | Child Entity | Foreign Key | Description |
+### 2.2 Preliminary Relationships and Cardinality
+
+**Table 2. Preliminary Relationships and Cardinality**
+
+| Parent Entity | Cardinality | Child Entity | Foreign Key | Description |
 |---|---|---|---|---|
-| Classification | 1:M | Classification | parent_id (nullable) | Self-referencing taxonomy tree of any depth, e.g., Dog → Sporting Group → Retriever → Golden Retriever |
-| Classification | 1:M | Animal | classification_id | Each animal belongs to one classification |
-| Animal | 1:M | AdoptionRecord | animal_id | An animal can have adoption records |
-| Adopter | 1:M | AdoptionRecord | adopter_id | An adopter can adopt multiple animals |
-| Animal | 1:M | WaitlistEntry | animal_id | An animal can have many adopters waiting |
-| Adopter | 1:M | WaitlistEntry | adopter_id | An adopter can wait on multiple animals |
+| Classification | 1:M | Classification | parent_id (nullable) | Self-referencing taxonomy tree of any depth, e.g., Dog → Sporting Group → Retriever → Golden Retriever. |
+| Classification | 1:M | Animal | classification_id | Each animal may belong to one classification. |
+| Animal | 1:M | AdoptionRecord | animal_id | An animal can be associated with adoption records that document its completed adoption transactions. |
+| Adopter | 1:M | AdoptionRecord | adopter_id | An adopter can adopt multiple animals. |
+| Animal | 1:M | WaitlistEntry | animal_id | An animal can have many adopters waiting. |
+| Adopter | 1:M | WaitlistEntry | adopter_id | An adopter can have multiple waitlist entries for different animals. |
 
-### Table 3: Team Members and Primary Roles
+### 2.3 Team Members and Primary Roles
 
-| Member | Primary Responsibility (this milestone) |
-| --- | --- |
+**Table 3. Team Members and Primary Roles**
+
+| Member | Primary Responsibility |
+|---|---|
 | Sofia Yvonne Enovero | Team Lead / Developer |
-| Shann Michael Agang | UI Designer/Developer |
+| Shann Michael Agang | UI Designer / Developer |
 | Cleint Lausa | Developer |
 | Kyle Cheznie Taghoy | QA (Quality Assurance) |
 | Aeisha Mae Elizar | Database Admin |
 
+![Preliminary Entity-Relationship Diagram](./erd.png)
+
+*Figure 2.1. Preliminary Entity-Relationship Sketch of PawTrack.*
 <br>
 
 ## 3. System Architecture & Object-Oriented Design
