@@ -43,8 +43,23 @@ public final class NotificationReadService {
         }
         return output;
     }
+    public record ApplicationNotice(int applicationId,String animal,String status,boolean read,String updatedAt) {}
+    public List<ApplicationNotice> applicationNotices() throws SQLException {
+        User user=me(); List<ApplicationNotice> output=new ArrayList<>();
+        try(PreparedStatement ps=database.connection().prepareStatement(
+            "SELECT ap.id,a.name,ap.status,ap.updated_at, nr.user_id FROM adoption_application ap " +
+            "JOIN animal a ON a.id=ap.animal_id LEFT JOIN application_notice_read nr ON nr.application_id=ap.id " +
+            "AND nr.user_id=? AND nr.status=ap.status AND nr.updated_at=ap.updated_at " +
+            "WHERE ap.adopter_id=? ORDER BY ap.updated_at DESC")) {
+            ps.setInt(1,user.getId());ps.setInt(2,user.getAdopterId());
+            try(ResultSet rs=ps.executeQuery()){while(rs.next())output.add(new ApplicationNotice(
+                rs.getInt(1),rs.getString(2),rs.getString(3),rs.getObject(5)!=null,rs.getString(4)));
+            }
+        }return output;
+    }
     public int unreadCount() throws SQLException {
-        return (int) myNotices().stream().filter(n -> !n.read()).count();
+        return (int) myNotices().stream().filter(n -> !n.read()).count() +
+            (int)applicationNotices().stream().filter(n -> !n.read()).count();
     }
     /** Only marks a notice confirmed to belong to the current account. */
     public void markRead(int reservationId, String status) throws SQLException {
@@ -58,5 +73,12 @@ public final class NotificationReadService {
     }
     public void markAllRead() throws SQLException {
         for (Notice n : myNotices()) if (!n.read()) markRead(n.reservationId(), n.status());
+        User user=me();
+        for(ApplicationNotice n:applicationNotices()) if(!n.read()){
+            try(PreparedStatement ps=database.connection().prepareStatement(
+                "INSERT OR IGNORE INTO application_notice_read(user_id,application_id,status,updated_at) VALUES(?,?,?,?)")){
+                ps.setInt(1,user.getId());ps.setInt(2,n.applicationId());ps.setString(3,n.status());ps.setString(4,n.updatedAt());ps.executeUpdate();
+            }
+        }
     }
 }

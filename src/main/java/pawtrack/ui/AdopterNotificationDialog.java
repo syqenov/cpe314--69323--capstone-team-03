@@ -43,7 +43,10 @@ public final class AdopterNotificationDialog {
         try {
             var notices = readService.myNotices();
             StringBuilder content = new StringBuilder();
-            if (notices.isEmpty()) content.append("No reservation updates yet.");
+            var applications = readService.applicationNotices();
+            if (notices.isEmpty() && applications.isEmpty()) content.append("No updates yet.");
+            for (var n : applications) content.append(n.read()?"[Read]  ":"[New]  ")
+                    .append(n.animal()).append(" - Application ").append(n.status().replace('_',' ')).append("\n");
             for (var n : notices) {
                 content.append(n.read() ? "[Read]  " : "[New]  ").append(n.animal()).append(" - ")
                         .append(n.status()).append("\n");
