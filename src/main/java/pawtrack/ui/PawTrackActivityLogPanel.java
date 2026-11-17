@@ -21,10 +21,10 @@ import java.util.Locale;
  * persistent/immutable audit system. MainFrame remains the sole event source.
  */
 public final class PawTrackActivityLogPanel extends JPanel {
-    private static final Color NAVY = new Color(0x18335F);
-    private static final Color BLUE = new Color(0x326BD0);
-    private static final Color MUTED = new Color(0x677C9E);
-    private static final Color CANVAS = new Color(0xF1F6FF);
+    private static final Color NAVY = PawTrackTheme.NAVY;
+    private static final Color BLUE = PawTrackTheme.BLUE;
+    private static final Color MUTED = PawTrackTheme.MUTED;
+    private static final Color CANVAS = PawTrackTheme.CANVAS;
     private static final DateTimeFormatter CLOCK = DateTimeFormatter.ofPattern("MMM d, h:mm a", Locale.ENGLISH);
     private final List<Entry> entries = new ArrayList<>();
     private final JPanel feed = new JPanel();
@@ -37,7 +37,7 @@ public final class PawTrackActivityLogPanel extends JPanel {
     private final JLabel countAnimal = new JLabel("0");
     private final JLabel countAdoption = new JLabel("0");
     private final JLabel countSystem = new JLabel("0");
-    private final JLabel latest = new JLabel("No recorded events yet");
+    private final JTextArea latest = new JTextArea("No recorded events yet");
     private final JLabel latestTime = new JLabel(" ");
     private final JLabel footer = new JLabel("Showing 0 of 0 in-session events");
     private final JTable details = new JTable(model);
@@ -61,7 +61,7 @@ public final class PawTrackActivityLogPanel extends JPanel {
         outer.getVerticalScrollBar().setUnitIncrement(18);
         add(outer, BorderLayout.CENTER);
 
-        JPanel hero = new SoftCard(new Color(0x183A74), new Color(0x3F83DF), 23);
+        JPanel hero = new SoftCard(PawTrackTheme.HERO_START, PawTrackTheme.HERO_END, 23);
         hero.setLayout(new BorderLayout(15, 0));
         hero.setBorder(new EmptyBorder(13, 22, 13, 22));
         JPanel heroText = new JPanel(new GridLayout(3, 1, 0, 3));
@@ -135,15 +135,31 @@ public final class PawTrackActivityLogPanel extends JPanel {
         JPanel lastCard = new WhiteCard(new BorderLayout(0, 12));
         lastCard.setBorder(new EmptyBorder(18, 17, 18, 17));
         lastCard.add(label("Latest Event", 18, true, NAVY), BorderLayout.NORTH);
-        JPanel lastBody = new JPanel(new GridLayout(3, 1, 0, 7));
+        JPanel lastBody = new JPanel(new BorderLayout(0, 9));
         lastBody.setOpaque(false);
         latest.setFont(font(13, true));
         latest.setForeground(NAVY);
+        latest.setEditable(false);
+        latest.setFocusable(false);
+        latest.setLineWrap(true);
+        latest.setWrapStyleWord(true);
+        latest.setOpaque(false);
+        latest.setBorder(null);
+        // The full event remains readable even for long messages.
+        JScrollPane latestScroll = new JScrollPane(latest,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        latestScroll.setOpaque(false);
+        latestScroll.getViewport().setOpaque(false);
+        latestScroll.setBorder(null);
+        latestScroll.getVerticalScrollBar().setUnitIncrement(12);
+        lastBody.add(latestScroll, BorderLayout.CENTER);
         latestTime.setFont(font(11, false));
         latestTime.setForeground(MUTED);
-        lastBody.add(latest);
-        lastBody.add(latestTime);
-        lastBody.add(label("Select a feed item to inspect its message.", 11, false, MUTED));
+        JPanel lastFooter = new JPanel(new GridLayout(2, 1, 0, 4));
+        lastFooter.setOpaque(false);
+        lastFooter.add(latestTime);
+        lastFooter.add(label("Select a feed item to inspect its message.", 11, false, MUTED));
+        lastBody.add(lastFooter, BorderLayout.SOUTH);
         lastCard.add(lastBody, BorderLayout.CENTER);
         aside.add(lastCard);
         JPanel noteCard = new SoftCard(new Color(0xE7F0FF), new Color(0xEDF9F6), 18);
@@ -174,6 +190,18 @@ public final class PawTrackActivityLogPanel extends JPanel {
         details.getTableHeader().setFont(font(12, true));
         details.getTableHeader().setBackground(new Color(0xE7F0FF));
         details.getTableHeader().setForeground(NAVY);
+        details.getTableHeader().setDefaultRenderer(new DefaultTableCellRenderer() {
+            @Override public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean selected, boolean focused, int row, int column) {
+                super.getTableCellRendererComponent(table, value, selected, focused, row, column);
+                setFont(font(12, true));
+                setBackground(PawTrackTheme.isDark() ? PawTrackTheme.DARK_SIDEBAR : new Color(0xE7F0FF));
+                setForeground(PawTrackTheme.isDark() ? PawTrackTheme.DARK_TEXT : NAVY);
+                setBorder(new EmptyBorder(0, 9, 0, 9));
+                setOpaque(true);
+                return this;
+            }
+        });
         DefaultTableCellRenderer renderer = new DefaultTableCellRenderer();
         renderer.setBorder(new EmptyBorder(0, 9, 0, 9));
         details.setDefaultRenderer(Object.class, renderer);
@@ -274,8 +302,8 @@ public final class PawTrackActivityLogPanel extends JPanel {
     }
 
     private void select(Entry entry) {
-        String shortened = entry.message.length() > 70 ? entry.message.substring(0, 67) + "..." : entry.message;
-        latest.setText(shortened);
+        latest.setText(entry.message);
+        latest.setCaretPosition(0);
         latest.setToolTipText(entry.message);
         latestTime.setText(entry.type + "  •  " + entry.time.format(CLOCK));
     }
@@ -304,6 +332,10 @@ public final class PawTrackActivityLogPanel extends JPanel {
     }
     private static final class ScrollColumn extends JPanel implements Scrollable {
         ScrollColumn() { setLayout(new BoxLayout(this, BoxLayout.Y_AXIS)); }
+        @Override protected void paintComponent(Graphics graphics) {
+            super.paintComponent(graphics);
+            PawTrackBackdrop.paint(graphics, this);
+        }
         @Override public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }
         @Override public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) { return 20; }
         @Override public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) { return Math.max(100, visibleRect.height - 55); }
@@ -319,7 +351,7 @@ public final class PawTrackActivityLogPanel extends JPanel {
         @Override protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setPaint(new GradientPaint(0, 0, left, getWidth(), getHeight(), right));
+            g2.setPaint(new GradientPaint(0, 0, PawTrackTheme.fill(left), getWidth(), getHeight(), PawTrackTheme.fill(right)));
             g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
             g2.dispose(); super.paintComponent(g);
         }

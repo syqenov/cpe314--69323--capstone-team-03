@@ -13,13 +13,19 @@ import java.awt.geom.RoundRectangle2D;
  * Staff-only actions are present only when the original authorized buttons exist.
  */
 public final class PawTrackToolsPanel extends JPanel {
-    private static final Color NAVY = new Color(0x19345F);
-    private static final Color BLUE = new Color(0x326ED0);
-    private static final Color MUTED = new Color(0x657998);
-    private static final Color BORDER = new Color(0xDBE6F8);
-    private static final Color CANVAS = new Color(0xF2F7FF);
+    @Override protected void paintComponent(java.awt.Graphics graphics) {
+        super.paintComponent(graphics);
+        PawTrackBackdrop.paint(graphics, this);
+    }
+
+    private static final Color NAVY = PawTrackTheme.NAVY;
+    private static final Color BLUE = PawTrackTheme.BLUE;
+    private static final Color MUTED = PawTrackTheme.MUTED;
+    private static final Color BORDER = PawTrackTheme.LINE;
+    private static final Color CANVAS = PawTrackTheme.CANVAS;
     private final JScrollPane originalToolbar;
     private final Runnable openAccountSettings;
+    private final Runnable toggleAppearance;
     private final boolean staff;
 
     public PawTrackToolsPanel(JScrollPane actions) {
@@ -27,10 +33,16 @@ public final class PawTrackToolsPanel extends JPanel {
     }
 
     public PawTrackToolsPanel(JScrollPane actions, Runnable openAccountSettings) {
+        this(actions, openAccountSettings, null);
+    }
+
+    public PawTrackToolsPanel(JScrollPane actions, Runnable openAccountSettings,
+                             Runnable toggleAppearance) {
         super(new BorderLayout());
         if (actions == null) throw new IllegalArgumentException("Actions are required");
         this.originalToolbar = actions;
         this.openAccountSettings = openAccountSettings;
+        this.toggleAppearance = toggleAppearance;
         this.staff = findButton(actions, "Add Animal") != null;
         setBackground(CANVAS);
 
@@ -66,7 +78,7 @@ public final class PawTrackToolsPanel extends JPanel {
             @Override protected void paintComponent(Graphics graphics) {
                 Graphics2D g = (Graphics2D) graphics.create();
                 g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g.setPaint(new GradientPaint(0, 0, new Color(0xE0ECFF), getWidth(), getHeight(), new Color(0xF3F8FF)));
+                g.setPaint(new GradientPaint(0, 0, PawTrackTheme.isDark() ? PawTrackTheme.DARK_INPUT : new Color(0xE0ECFF), getWidth(), getHeight(), PawTrackTheme.isDark() ? PawTrackTheme.DARK_SURFACE : new Color(0xF3F8FF)));
                 g.fillRoundRect(0, 0, getWidth(), getHeight(), 24, 24);
                 g.setColor(new Color(49, 95, 173, 22));
                 g.fillOval(getWidth() - 145, -55, 185, 185);
@@ -91,9 +103,11 @@ public final class PawTrackToolsPanel extends JPanel {
     private JPanel appearanceCard() {
         JPanel card = section("Appearance", "Customize how PawTrack looks.", "DISPLAY", new Color(0xDCE9FF));
         JPanel items = body(card);
-        JButton theme = linkedButton("Switch Light / Dark", "Use PawTrack's existing theme control", "Dark", "Light");
+        JButton theme = toggleAppearance != null
+                ? actionButton("Switch Light / Dark", "Switch the full workspace theme", toggleAppearance)
+                : linkedButton("Switch Light / Dark", "Use PawTrack's existing theme control", "Dark", "Light");
         items.add(theme);
-        note(items, "Full app-wide dark-mode polish can be completed after the page redesigns.");
+        note(items, "Your theme preference is saved to this account and restored on sign-in.");
         return card;
     }
 
@@ -132,9 +146,9 @@ public final class PawTrackToolsPanel extends JPanel {
                 g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g.setColor(new Color(39, 75, 135, 16));
                 g.fill(new RoundRectangle2D.Double(2, 5, getWidth()-5, getHeight()-7, 23, 23));
-                g.setColor(Color.WHITE);
+                g.setColor(PawTrackTheme.surface());
                 g.fill(new RoundRectangle2D.Double(1, 1, getWidth()-5, getHeight()-9, 22, 22));
-                g.setColor(BORDER);
+                g.setColor(PawTrackTheme.line());
                 g.draw(new RoundRectangle2D.Double(1, 1, getWidth()-5, getHeight()-9, 22, 22));
                 g.dispose();
                 super.paintComponent(graphics);
@@ -196,9 +210,9 @@ public final class PawTrackToolsPanel extends JPanel {
             @Override protected void paintComponent(Graphics graphics) {
                 Graphics2D g = (Graphics2D) graphics.create();
                 g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g.setColor(isEnabled() ? new Color(0xEDF4FF) : new Color(0xF4F6F9));
+                g.setColor(PawTrackTheme.isDark() ? PawTrackTheme.DARK_INPUT : (isEnabled() ? new Color(0xEDF4FF) : new Color(0xF4F6F9)));
                 g.fillRoundRect(0, 0, getWidth()-1, getHeight()-1, 16, 16);
-                g.setColor(isEnabled() ? new Color(0xA8C4F1) : new Color(0xE1E5EB));
+                g.setColor(PawTrackTheme.isDark() ? PawTrackTheme.DARK_BORDER : (isEnabled() ? new Color(0xA8C4F1) : new Color(0xE1E5EB)));
                 g.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, 16, 16);
                 g.dispose();
                 super.paintComponent(graphics);

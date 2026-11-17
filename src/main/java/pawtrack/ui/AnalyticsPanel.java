@@ -70,9 +70,9 @@ public final class AnalyticsPanel extends JPanel {
     private AnalyticsReport report;
     private Map<String, Long> classificationCounts = new LinkedHashMap<>();
 
-    private static final Color INK = new Color(0x17325D);
-    private static final Color MUTED = new Color(0x5C7397);
-    private static final Color BLUE = new Color(0x356ED2);
+    private static final Color INK = PawTrackTheme.NAVY;
+    private static final Color MUTED = PawTrackTheme.MUTED;
+    private static final Color BLUE = PawTrackTheme.BLUE;
     private static final Color GREEN = new Color(0x159D80);
     private static final Color PINK = new Color(0xD34E86);
     private static final Color PURPLE = new Color(0x7B61C7);
@@ -81,7 +81,7 @@ public final class AnalyticsPanel extends JPanel {
 
     public AnalyticsPanel() {
         super(new BorderLayout());
-        setBackground(new Color(0xF3F7FF));
+        setBackground(PawTrackTheme.CANVAS);
         setBorder(new EmptyBorder(16, 22, 16, 22));
 
         // The page is scrollable vertically and always fills the viewport width.
@@ -100,7 +100,7 @@ public final class AnalyticsPanel extends JPanel {
 
         JPanel top = new JPanel(new BorderLayout(0, 13));
         top.setOpaque(false);
-        JPanel hero = new GradientCard(new Color(0x173B78), new Color(0x3678D7), 24);
+        JPanel hero = new GradientCard(PawTrackTheme.HERO_START, PawTrackTheme.HERO_END, 24);
         hero.setLayout(new BorderLayout(20, 0));
         hero.setBorder(new EmptyBorder(16, 22, 16, 22));
         JPanel heroText = new JPanel(new GridLayout(3, 1, 0, 1));
@@ -218,6 +218,10 @@ public final class AnalyticsPanel extends JPanel {
             super(new BorderLayout(0, 14));
             setOpaque(false);
         }
+        @Override protected void paintComponent(Graphics graphics) {
+            super.paintComponent(graphics);
+            PawTrackBackdrop.paint(graphics, this);
+        }
         @Override public Dimension getPreferredScrollableViewportSize() {
             return getPreferredSize();
         }
@@ -317,7 +321,7 @@ public final class AnalyticsPanel extends JPanel {
         @Override protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setPaint(new GradientPaint(0, 0, start, getWidth(), getHeight(), end));
+            g2.setPaint(new GradientPaint(0, 0, PawTrackTheme.fill(start), getWidth(), getHeight(), PawTrackTheme.fill(end)));
             g2.fillRoundRect(0, 0, getWidth()-1, getHeight()-1, radius, radius);
             g2.dispose();
             super.paintComponent(g);
