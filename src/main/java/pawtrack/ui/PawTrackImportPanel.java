@@ -71,7 +71,7 @@ public final class PawTrackImportPanel extends JPanel {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setPaint(new GradientPaint(0, 0, new Color(0xD5E7FF), getWidth(), getHeight(), new Color(0xEAF3FF)));
+                g2.setPaint(new GradientPaint(0, 0, PawTrackTheme.isDark() ? PawTrackTheme.DARK_INPUT : new Color(0xD5E7FF), getWidth(), getHeight(), PawTrackTheme.isDark() ? PawTrackTheme.DARK_SURFACE : new Color(0xEAF3FF)));
                 g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 26, 26);
                 g2.setColor(new Color(0xBDD5F7));
                 Path2D.Double wave = new Path2D.Double();
@@ -125,7 +125,7 @@ public final class PawTrackImportPanel extends JPanel {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(0xF0F6FF));
+                g2.setColor(PawTrackTheme.isDark() ? PawTrackTheme.DARK_INPUT : new Color(0xF0F6FF));
                 g2.fillRoundRect(1, 1, getWidth()-2, getHeight()-2, 22, 22);
                 Stroke previous = g2.getStroke();
                 g2.setColor(new Color(0xA8C9F5));
@@ -284,9 +284,9 @@ public final class PawTrackImportPanel extends JPanel {
             x.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             x.setColor(new Color(0xD7E5F9));
             x.fillRoundRect(1, 4, getWidth()-3, getHeight()-6, 22, 22);
-            x.setColor(Color.WHITE);
+            x.setColor(PawTrackTheme.surface());
             x.fillRoundRect(0, 0, getWidth()-3, getHeight()-7, 22, 22);
-            x.setColor(BORDER);
+            x.setColor(PawTrackTheme.line());
             x.drawRoundRect(0, 0, getWidth()-3, getHeight()-7, 22, 22);
             x.dispose();
             super.paintComponent(g);

@@ -556,8 +556,10 @@ public final class MyRecordsPanel extends JPanel {
             JLabel l = (JLabel) super.getTableCellRendererComponent(table, val, selected, focus, row, column);
             l.setIcon(null); // renderers are reused; clear any icon left from another column
             l.setFont(font(12, false));
-            l.setForeground(NAVY);
-            l.setBackground(selected ? new Color(0xDCEAFE) : row % 2 == 0 ? Color.WHITE : new Color(0xF4F8FF));
+            l.setForeground(PawTrackTheme.text());
+            l.setBackground(PawTrackTheme.isDark() ? (selected ? PawTrackTheme.DARK_SELECTED :
+                    (row % 2 == 0 ? PawTrackTheme.DARK_SURFACE : PawTrackTheme.DARK_INPUT)) :
+                    (selected ? new Color(0xDCEAFE) : row % 2 == 0 ? Color.WHITE : new Color(0xF4F8FF)));
             l.setBorder(new EmptyBorder(6, 10, 6, 10));
             l.setOpaque(true);
             l.setVerticalAlignment(SwingConstants.CENTER);
@@ -588,7 +590,7 @@ public final class MyRecordsPanel extends JPanel {
                     l.setText(formatBreed(r.breed()));
                 } else if (column == 3) {
                     l.setFont(font(12, true));
-                    l.setForeground(BLUE);
+                    l.setForeground(PawTrackTheme.accent());
                 }
             }
             return l;
@@ -619,7 +621,7 @@ public final class MyRecordsPanel extends JPanel {
             Graphics2D gg = (Graphics2D) g.create();
             gg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             gg.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            gg.setColor(rowBackground);
+            gg.setColor(PawTrackTheme.fill(rowBackground));
             gg.fillRect(0, 0, getWidth(), getHeight());
             if (!state.isEmpty()) {
                 gg.setFont(font(11, true));
@@ -644,7 +646,7 @@ public final class MyRecordsPanel extends JPanel {
             JLabel l = (JLabel) super.getTableCellRendererComponent(table, val, sel, focus, row, column);
             if (column == 0) l.setFont(font(12, true));
             if (column == 3) {
-                l.setForeground(BLUE);
+                l.setForeground(PawTrackTheme.accent());
                 l.setHorizontalAlignment(SwingConstants.CENTER);
             } else l.setHorizontalAlignment(SwingConstants.LEFT);
             return l;
@@ -715,7 +717,7 @@ public final class MyRecordsPanel extends JPanel {
             Graphics2D gg = (Graphics2D) g.create();
             gg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             int y = Math.max(0, (getHeight() - 52) / 2);
-            gg.setColor(bg);
+            gg.setColor(PawTrackTheme.fill(bg));
             gg.fillRoundRect(0, y, 52, 52, 18, 18);
             gg.translate(14, y + 14);
             gg.setColor(fg);

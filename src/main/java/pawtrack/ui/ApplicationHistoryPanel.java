@@ -320,10 +320,10 @@ public final class ApplicationHistoryPanel extends JPanel {
             @Override protected void paintComponent(Graphics graphics) {
                 Graphics2D g = (Graphics2D) graphics.create();
                 g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g.setColor(color);
+                g.setColor(PawTrackTheme.fill(color));
                 g.fillRoundRect(0, 0, Math.max(0, getWidth()-1), Math.max(0, getHeight()-1), radius, radius);
                 if (outline != null) {
-                    g.setColor(outline);
+                    g.setColor(PawTrackTheme.isDark() ? PawTrackTheme.DARK_BORDER : outline);
                     g.drawRoundRect(0, 0, Math.max(0, getWidth()-1), Math.max(0, getHeight()-1), radius, radius);
                 }
                 g.dispose();
@@ -351,8 +351,10 @@ public final class ApplicationHistoryPanel extends JPanel {
                                                                      boolean focus, int row, int col) {
             super.getTableCellRendererComponent(t, val, selected, focus, row, col);
             setBorder(new EmptyBorder(0, 12, 0, 6));
-            setBackground(selected ? new Color(0xDCEBFF) : row % 2 == 0 ? Color.WHITE : new Color(0xF2F7FF));
-            setForeground(NAVY);
+            setBackground(PawTrackTheme.isDark()
+                    ? (selected ? PawTrackTheme.DARK_SELECTED : (row % 2 == 0 ? PawTrackTheme.DARK_SURFACE : PawTrackTheme.DARK_INPUT))
+                    : (selected ? new Color(0xDCEBFF) : row % 2 == 0 ? Color.WHITE : new Color(0xF2F7FF)));
+            setForeground(PawTrackTheme.text());
             setFont(new Font("Segoe UI", column == 1 ? Font.BOLD : Font.PLAIN, 12));
             if (column == 0) setHorizontalAlignment(SwingConstants.CENTER);
             else setHorizontalAlignment(SwingConstants.LEFT);
@@ -389,7 +391,9 @@ public final class ApplicationHistoryPanel extends JPanel {
             setOpaque(false);
             setBorder(null);
             setHorizontalAlignment(SwingConstants.CENTER);
-            setBackground(selected ? new Color(0xDCEBFF) : row % 2 == 0 ? Color.WHITE : new Color(0xF2F7FF));
+            setBackground(PawTrackTheme.isDark()
+                    ? (selected ? PawTrackTheme.DARK_SELECTED : (row % 2 == 0 ? PawTrackTheme.DARK_SURFACE : PawTrackTheme.DARK_INPUT))
+                    : (selected ? new Color(0xDCEBFF) : row % 2 == 0 ? Color.WHITE : new Color(0xF2F7FF)));
             return this;
         }
         @Override protected void paintComponent(Graphics graphics) {

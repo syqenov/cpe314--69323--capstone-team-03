@@ -247,8 +247,10 @@ public final class AnimalBrowsePanel extends JPanel {
         button.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(PremiumUi.LINE, 1, true), new EmptyBorder(8, 14, 8, 14)));
         Runnable paint = () -> {
-            button.setBackground(button.isSelected() ? PremiumUi.BLUE : Color.WHITE);
-            button.setForeground(button.isSelected() ? Color.WHITE : PremiumUi.BLUE);
+            button.setBackground(PawTrackTheme.isDark()
+                    ? (button.isSelected() ? PawTrackTheme.DARK_SELECTED : PawTrackTheme.DARK_INPUT)
+                    : (button.isSelected() ? PremiumUi.BLUE : Color.WHITE));
+            button.setForeground(button.isSelected() ? Color.WHITE : PawTrackTheme.accent());
         };
         button.addItemListener(e -> paint.run());
         paint.run();
@@ -320,9 +322,13 @@ public final class AnimalBrowsePanel extends JPanel {
                 boolean selected = isGalleryCardSelected(id);
                 g.setColor(new Color(36, 82, 150, 18));
                 g.fillRoundRect(3, 5, Math.max(0, getWidth() - 7), Math.max(0, getHeight() - 8), 25, 25);
-                g.setColor(selected ? new Color(0xE8F2FF) : Color.WHITE);
+                g.setColor(PawTrackTheme.isDark()
+                        ? (selected ? PawTrackTheme.DARK_INPUT : PawTrackTheme.DARK_SURFACE)
+                        : (selected ? new Color(0xE8F2FF) : Color.WHITE));
                 g.fillRoundRect(1, 1, Math.max(0, getWidth() - 7), Math.max(0, getHeight() - 9), 24, 24);
-                g.setColor(selected ? new Color(0x2867C5) : PremiumUi.LINE);
+                g.setColor(PawTrackTheme.isDark()
+                        ? (selected ? PawTrackTheme.DARK_ACCENT : PawTrackTheme.DARK_BORDER)
+                        : (selected ? new Color(0x2867C5) : PremiumUi.LINE));
                 g.setStroke(new BasicStroke(selected ? 3f : 1f));
                 g.drawRoundRect(2, 2, Math.max(0, getWidth() - 9), Math.max(0, getHeight() - 11), 23, 23);
                 g.dispose();
@@ -337,6 +343,7 @@ public final class AnimalBrowsePanel extends JPanel {
         image.setOpaque(true);
         image.setBackground(new Color(0xE7F0FC));
         image.setForeground(PremiumUi.BLUE);
+        if (PawTrackTheme.isDark()) PawTrackThemeManager.applyCurrent(image);
         image.setFont(PremiumUi.font(20, true));
         image.setPreferredSize(new Dimension(CARD_IMG_W, CARD_IMG_H));
         loadInto(image, id, species, breed, CARD_IMG_W, CARD_IMG_H);
@@ -439,7 +446,7 @@ public final class AnimalBrowsePanel extends JPanel {
         profileName.setText(Objects.toString(table.getValueAt(row, 1), "Pet"));
         profileBreed.setText(species + " · " + table.getValueAt(row, 3));
         profileStatus.setText("Status: " + state);
-        profileStatus.setForeground(pillText(state));
+        profileStatus.setForeground(PawTrackTheme.isDark() ? PawTrackTheme.DARK_ACCENT : pillText(state));
         profileDetails.setText("Age: " + table.getValueAt(row, 4) + " months · Queue: " + table.getValueAt(row, 8));
         profilePhoto.setIcon(null);
         profilePhoto.setText(species.toUpperCase(Locale.ROOT));

@@ -591,9 +591,9 @@ public final class WaitlistPanel extends JPanel {
         @Override protected void paintComponent(Graphics g) {
             Graphics2D gg = (Graphics2D) g.create();
             gg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            gg.setColor(bg);
+            gg.setColor(PawTrackTheme.fill(bg));
             gg.fillRoundRect(0, 0, getWidth()-1, getHeight()-1, radius, radius);
-            gg.setColor(outline);
+            gg.setColor(PawTrackTheme.isDark() ? PawTrackTheme.DARK_BORDER : outline);
             gg.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, radius, radius);
             gg.dispose();
             super.paintComponent(g);
@@ -623,9 +623,10 @@ public final class WaitlistPanel extends JPanel {
         @Override public Component getTableCellRendererComponent(JTable table, Object value,
                 boolean selected, boolean focused, int row, int column) {
             super.getTableCellRendererComponent(table, value, selected, focused, row, column);
-            setBackground(selected ? new Color(0xDCEAFF)
-                    : (row % 2 == 0 ? new Color(0xEDF5FF) : Color.WHITE));
-            setForeground(TEXT);
+            setBackground(PawTrackTheme.isDark() ? (selected ? PawTrackTheme.DARK_SELECTED :
+                    (row % 2 == 0 ? PawTrackTheme.DARK_SURFACE : PawTrackTheme.DARK_INPUT)) :
+                    (selected ? new Color(0xDCEAFF) : (row % 2 == 0 ? new Color(0xEDF5FF) : Color.WHITE)));
+            setForeground(PawTrackTheme.text());
             setFont(new Font("Segoe UI", this.column == 0 ? Font.BOLD : Font.PLAIN, 12));
             if (this.column == 4) setHorizontalAlignment(SwingConstants.CENTER);
             else setHorizontalAlignment(SwingConstants.LEFT);
@@ -649,14 +650,15 @@ public final class WaitlistPanel extends JPanel {
         @Override protected void paintComponent(Graphics g) {
             Graphics2D x = (Graphics2D) g.create();
             x.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            x.setColor(selected ? new Color(0xDCEAFF) :
-                    (row % 2 == 0 ? new Color(0xEDF5FF) : Color.WHITE));
+            x.setColor(PawTrackTheme.isDark() ? (selected ? PawTrackTheme.DARK_SELECTED :
+                    (row % 2 == 0 ? PawTrackTheme.DARK_SURFACE : PawTrackTheme.DARK_INPUT)) :
+                    (selected ? new Color(0xDCEAFF) : (row % 2 == 0 ? new Color(0xEDF5FF) : Color.WHITE)));
             x.fillRect(0, 0, getWidth(), getHeight());
             int diameter = 31, left = (getWidth() - diameter)/2;
             int top = (getHeight() - diameter)/2;
-            x.setColor(new Color(0xD7E9FF));
+            x.setColor(PawTrackTheme.isDark() ? PawTrackTheme.DARK_HOVER : new Color(0xD7E9FF));
             x.fillOval(left, top, diameter, diameter);
-            x.setColor(new Color(0x205C9E));
+            x.setColor(PawTrackTheme.isDark() ? PawTrackTheme.DARK_ACCENT : new Color(0x205C9E));
             x.setFont(new Font("Segoe UI", Font.BOLD, 13));
             FontMetrics metrics = x.getFontMetrics();
             x.drawString(value, (getWidth()-metrics.stringWidth(value))/2,
@@ -696,14 +698,17 @@ public final class WaitlistPanel extends JPanel {
                     : animal.species().label();
             title.setText(raw);
             type.setText(species);
+            title.setForeground(PawTrackTheme.text());
+            type.setForeground(PawTrackTheme.muted());
             ImageIcon photo = animal == null ? null : animalPhotos.get(animal.getId());
             thumb.setIcon(photo);
             thumb.setText(photo == null ? ("Dog".equalsIgnoreCase(species) ? "D" : "C") : "");
             thumb.setFont(new Font("Segoe UI", Font.BOLD, 15));
-            thumb.setForeground(BLUE);
-            thumb.setBackground(new Color(0xDCEBFF));
-            setBackground(selected ? new Color(0xDCEAFF)
-                    : (viewRow % 2 == 0 ? new Color(0xEDF5FF) : Color.WHITE));
+            thumb.setForeground(PawTrackTheme.isDark() ? PawTrackTheme.DARK_ACCENT : BLUE);
+            thumb.setBackground(PawTrackTheme.isDark() ? PawTrackTheme.DARK_INPUT : new Color(0xDCEBFF));
+            setBackground(PawTrackTheme.isDark() ? (selected ? PawTrackTheme.DARK_SELECTED :
+                    (viewRow % 2 == 0 ? PawTrackTheme.DARK_SURFACE : PawTrackTheme.DARK_INPUT)) :
+                    (selected ? new Color(0xDCEAFF) : (viewRow % 2 == 0 ? new Color(0xEDF5FF) : Color.WHITE)));
             return this;
         }
     }
@@ -732,8 +737,9 @@ public final class WaitlistPanel extends JPanel {
         @Override protected void paintComponent(Graphics g) {
             Graphics2D x = (Graphics2D) g.create();
             x.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            x.setColor(selected ? new Color(0xDCEAFF)
-                    : (rowIndex % 2 == 0 ? new Color(0xEDF5FF) : Color.WHITE));
+            x.setColor(PawTrackTheme.isDark() ? (selected ? PawTrackTheme.DARK_SELECTED :
+                    (rowIndex % 2 == 0 ? PawTrackTheme.DARK_SURFACE : PawTrackTheme.DARK_INPUT)) :
+                    (selected ? new Color(0xDCEAFF) : (rowIndex % 2 == 0 ? new Color(0xEDF5FF) : Color.WHITE)));
             x.fillRect(0, 0, getWidth(), getHeight());
             int pillW = Math.min(Math.max(68, getWidth()-12), Math.max(118, status.length()*8 + 48));
             int pillH = 30;

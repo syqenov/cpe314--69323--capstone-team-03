@@ -610,7 +610,7 @@ public final class PawTrackDashboard extends JPanel {
             super.paintComponent(g);
             Graphics2D gg = (Graphics2D) g.create();
             antialias(gg);
-            gg.setPaint(new GradientPaint(0, 0, new Color(0xF2F7FF), getWidth(), getHeight(), new Color(0xEEF3FF)));
+            gg.setPaint(new GradientPaint(0, 0, PawTrackTheme.isDark() ? PawTrackTheme.DARK_CANVAS : new Color(0xF2F7FF), getWidth(), getHeight(), PawTrackTheme.isDark() ? new Color(0x172A42) : new Color(0xEEF3FF)));
             gg.fillRect(0, 0, getWidth(), getHeight());
             gg.setColor(new Color(109, 160, 241, 22));
             gg.fillOval(getWidth() - 240, -110, 280, 240);
@@ -664,9 +664,9 @@ public final class PawTrackDashboard extends JPanel {
                 gg.setColor(new Color(32, 63, 133, alpha));
                 gg.fillRoundRect(3 - k, 4 - k, bw + 2 * k, bh + 2 * k, radius + 2 * k, radius + 2 * k);
             }
-            gg.setColor(fill);
+            gg.setColor(PawTrackTheme.fill(fill));
             gg.fillRoundRect(3, 2, bw, bh, radius, radius);
-            gg.setColor(mix(LINE, LINE_HOVER, hover));
+            gg.setColor(PawTrackTheme.isDark() ? PawTrackTheme.DARK_BORDER : mix(LINE, LINE_HOVER, hover));
             gg.drawRoundRect(3, 2, bw - 1, bh - 1, radius, radius);
             gg.dispose();
             super.paintComponent(g);
@@ -718,7 +718,7 @@ public final class PawTrackDashboard extends JPanel {
             int bw = bodyW(), bh = bodyH();
             Shape old = gg.getClip();
             gg.clip(new RoundRectangle2D.Float(3, 2, bw, bh, 22, 22));
-            gg.setPaint(new GradientPaint(3 + bw * .46f, 2, new Color(0xDDEAFF), 3 + bw, 2 + bh, new Color(0xBFD9FF)));
+            gg.setPaint(new GradientPaint(3 + bw * .46f, 2, PawTrackTheme.isDark() ? PawTrackTheme.DARK_INPUT : new Color(0xDDEAFF), 3 + bw, 2 + bh, PawTrackTheme.isDark() ? new Color(0x294869) : new Color(0xBFD9FF)));
             gg.fill(new Ellipse2D.Float(3 + bw * .52f, 2 - bh * .25f, bw * .77f, bh * 1.5f));
             gg.setColor(new Color(255, 255, 255, 65));
             gg.fillOval((int) (3 + bw * .45), (int) (2 + bh * .38), (int) (bw * .75), (int) (bh * .88));
@@ -789,15 +789,15 @@ public final class PawTrackDashboard extends JPanel {
             gg.fillRoundRect(2, 3, w, h, 17, 17);
             Color fill = primary ? (over ? new Color(0x25498A) : new Color(0x1C3D73))
                     : (over ? new Color(0xE8F1FF) : new Color(0xF7FAFF));
-            gg.setColor(fill);
+            gg.setColor(PawTrackTheme.fill(fill));
             gg.fillRoundRect(0, shift, w, h, 17, 17);
             if (!primary) {
-                gg.setColor(over ? LINE_HOVER : new Color(0xD8E5FA));
+                gg.setColor(PawTrackTheme.isDark() ? PawTrackTheme.DARK_BORDER : (over ? LINE_HOVER : new Color(0xD8E5FA)));
                 gg.drawRoundRect(0, shift, w - 1, h - 1, 17, 17);
             }
             new PetIcon(icon, accent, 23).paintSimple(gg, 13, shift + Math.max(8, (h - 23) / 2), 23, primary);
             gg.setFont(getFont());
-            gg.setColor(primary ? Color.WHITE : NAVY);
+            gg.setColor(primary ? Color.WHITE : PawTrackTheme.text());
             FontMetrics fm = gg.getFontMetrics();
             gg.drawString(getText(), 48, shift + (h - fm.getHeight()) / 2 + fm.getAscent());
             gg.setColor(primary ? new Color(0xC7D9FF) : BLUE);
@@ -830,7 +830,7 @@ public final class PawTrackDashboard extends JPanel {
         @Override protected void paintComponent(Graphics g) {
             Graphics2D gg = (Graphics2D) g.create();
             antialias(gg);
-            gg.setColor(tint);
+            gg.setColor(PawTrackTheme.fill(tint));
             gg.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, getHeight(), getHeight());
             gg.dispose();
             super.paintComponent(g);
@@ -899,7 +899,7 @@ public final class PawTrackDashboard extends JPanel {
                     gg.drawString(n, x0 + d / 2 - f2.stringWidth(n) / 2, cy + f2.getAscent() / 2 - 1);
                 }
                 gg.setFont(font(12, true));
-                gg.setColor(done || current ? NAVY : MUTED);
+                gg.setColor(done || current ? PawTrackTheme.text() : PawTrackTheme.muted());
                 gg.drawString(labels[i], labelX, cy + fm.getAscent() / 2 - 1);
             }
             gg.dispose();
@@ -1057,7 +1057,7 @@ public final class PawTrackDashboard extends JPanel {
             antialias(gg);
             int w = getWidth(), h = getHeight();
             Shape shape = new RoundRectangle2D.Float(0, 0, w, h, 14, 14);
-            gg.setColor(new Color(0xE3EDFC));
+            gg.setColor(PawTrackTheme.isDark() ? PawTrackTheme.DARK_INPUT : new Color(0xE3EDFC));
             gg.fill(shape);
             gg.setClip(shape);
             if (photo != null) {
@@ -1114,17 +1114,17 @@ public final class PawTrackDashboard extends JPanel {
             for (int i = 0; i < 3; i++) {
                 int x = (2 * i + 1) * w / 6;
                 int bh = Math.max(4, Math.round(trackH * (counts[i] / (float) max) * ease));
-                gg.setColor(new Color(0xEDF2FB));
+                gg.setColor((PawTrackTheme.isDark() ? PawTrackTheme.DARK_INPUT : new Color(0xEDF2FB)));
                 gg.fillRoundRect(x - 25, top, 50, trackH, 14, 14);
                 gg.setPaint(new GradientPaint(0, baseline - bh, mix(colors[i], Color.WHITE, .28f), 0, baseline, colors[i]));
                 gg.fillRoundRect(x - 25, baseline - bh, 50, bh, 14, 14);
                 gg.setFont(font(12, true));
-                gg.setColor(NAVY);
+                gg.setColor(PawTrackTheme.text());
                 String number = Integer.toString(Math.round(counts[i] * ease));
                 FontMetrics fm = gg.getFontMetrics();
                 gg.drawString(number, x - fm.stringWidth(number) / 2, Math.max(15, baseline - bh - 6));
                 gg.setFont(font(11, false));
-                gg.setColor(MUTED);
+                gg.setColor(PawTrackTheme.muted());
                 fm = gg.getFontMetrics();
                 gg.drawString(titles[i], x - fm.stringWidth(titles[i]) / 2, h - 9);
             }
@@ -1160,17 +1160,17 @@ public final class PawTrackDashboard extends JPanel {
             for (int k = 0; k < 5; k++) {
                 int y = b - (b - t) * k / 4;
                 g.setColor(new Color(0xE3EBF7)); g.drawLine(l, y, r, y);
-                g.setColor(MUTED); g.setFont(font(11, false)); g.drawString(Integer.toString(max * k / 4), 4, y + 4);
+                g.setColor(PawTrackTheme.muted()); g.setFont(font(11, false)); g.drawString(Integer.toString(max * k / 4), 4, y + 4);
             }
             Path2D.Double path = new Path2D.Double(), area = new Path2D.Double();
             for (int i = 0; i < 6; i++) {
                 int x = l + (r - l) * i / 5, y = b - (int) (values[i] / (double) max * (b - t));
                 if (i == 0) { path.moveTo(x, y); area.moveTo(x, b); area.lineTo(x, y); }
                 else { path.lineTo(x, y); area.lineTo(x, y); }
-                g.setColor(MUTED); g.setFont(font(11, false)); g.drawString(months[i], x - 10, getHeight() - 5);
+                g.setColor(PawTrackTheme.muted()); g.setFont(font(11, false)); g.drawString(months[i], x - 10, getHeight() - 5);
             }
             area.lineTo(r, b); area.closePath();
-            g.setPaint(new GradientPaint(0, t, new Color(0xCFE2FF), 0, b, new Color(0xF3F8FF)));
+            g.setPaint(new GradientPaint(0, t, PawTrackTheme.isDark()?PawTrackTheme.DARK_HOVER:new Color(0xCFE2FF), 0, b, PawTrackTheme.isDark()?PawTrackTheme.DARK_INPUT:new Color(0xF3F8FF)));
             g.fill(area);
             g.setColor(BLUE); g.setStroke(new BasicStroke(2.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)); g.draw(path);
             for (int i = 0; i < 6; i++) {
