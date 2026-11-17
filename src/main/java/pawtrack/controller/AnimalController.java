@@ -16,14 +16,35 @@ public final class AnimalController {
     private static final Logger LOGGER = Logger.getLogger(AnimalController.class.getName());
 
     private final AnimalDao animalDao;
+    private final AuthController auth;
     private List<Animal> animals = new ArrayList<>();
     private Animal selected;
     private String status = "Ready";
     private Consumer<String> statusListener;
     private Runnable onChange;
 
+    /** Authenticated constructor used by the application. */
+    public AnimalController(AnimalDao animalDao, AuthController auth) {
+        this.animalDao = java.util.Objects.requireNonNull(animalDao, "animalDao");
+        this.auth = java.util.Objects.requireNonNull(auth, "auth");
+    }
+
+    /** Compatibility constructor for read-only legacy clients; mutations are denied. */
+    @Deprecated
     public AnimalController(AnimalDao animalDao) {
-        this.animalDao = animalDao;
+        this.animalDao = java.util.Objects.requireNonNull(animalDao, "animalDao");
+        this.auth = null;
+    }
+
+    private void requireStaff() {
+        if (auth == null) {
+            throw new UnauthorizedException("Authenticated staff session required");
+        }
+        auth.requireStaff();
+    }
+
+    public java.util.Optional<Animal> findById(int id) throws SQLException {
+        return animalDao.findById(id);
     }
 
     public void setStatusListener(Consumer<String> statusListener) {
@@ -72,6 +93,7 @@ public final class AnimalController {
 
     /** Inserts a new animal and refreshes the in-memory list. */
     public Animal addAnimal(Animal animal) throws SQLException {
+        requireStaff();
         animalDao.insert(animal);
         animals.add(animal);
         notifyChange();
@@ -81,15 +103,31 @@ public final class AnimalController {
 
     /** Updates an existing animal's details and status. */
     public boolean updateAnimal(Animal animal) throws SQLException {
+        requireStaff();
         boolean updated = animalDao.updateDetails(animal.getId(), animal.getName(), animal.getBreed(),
                 animal.getAgeMonths(), animal.getIntakeDate());
+        if (!updated) {
+            setStatus("Animal not found");
+            return false;
+        }
         animalDao.updateStatus(animal.getId(), animal.getStatus());
         refresh();
+        return true;
+    }
+
+    /** Staff-only: changes how the animal came to the shelter (e.g. stray, surrender). */
+    public boolean updateAnimalSource(int animalId, String source) throws SQLException {
+        requireStaff();
+        boolean updated = animalDao.updateSource(animalId, source);
+        if (updated) {
+            refresh();
+        }
         return updated;
     }
 
     /** Deletes an animal by id and refreshes the in-memory list. */
     public boolean deleteAnimal(int id) throws SQLException {
+        requireStaff();
         boolean deleted = animalDao.deleteById(id);
         animals.removeIf(a -> a.getId() == id);
         notifyChange();

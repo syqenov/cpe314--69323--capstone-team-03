@@ -8,6 +8,7 @@ import pawtrack.service.ImportListener;
 
 import javax.swing.SwingWorker;
 import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
@@ -15,7 +16,7 @@ public final class ImportController {
     private final Database database;
     private final ClassificationService classification;
     private final AuthController auth;
-    private boolean busy;
+    private final AtomicBoolean busy = new AtomicBoolean(false);
     private String status = "";
 
     public ImportController(Database database, ClassificationService classification, AuthController auth) {
@@ -25,7 +26,7 @@ public final class ImportController {
     }
 
     public boolean isBusy() {
-        return busy;
+        return busy.get();
     }
 
     public String getStatus() {
@@ -34,9 +35,11 @@ public final class ImportController {
 
     public void importCsv(Path path, IntConsumer onProgress, Consumer<CsvImportResult> onDone, Consumer<Exception> onError) {
         auth.requireStaff();
-        busy = true;
+        if (!busy.compareAndSet(false, true)) {
+            throw new IllegalStateException("A CSV import is already in progress");
+        }
         status = "Importing...";
-        SwingWorker<CsvImportResult, Void> worker = new SwingWorker<>() {
+        SwingWorker<CsvImportResult, Integer> worker = new SwingWorker<>() {
             @Override
             protected CsvImportResult doInBackground() throws Exception {
                 CsvImportService service = new CsvImportService(database, classification);
@@ -45,7 +48,7 @@ public final class ImportController {
                     public void onProgress(int processed, int total) {
                         if (onProgress != null) {
                             int percent = total > 0 ? (int) (processed * 100.0 / total) : 0;
-                            onProgress.accept(percent);
+                            publish(percent);
                         }
                     }
 
@@ -56,8 +59,15 @@ public final class ImportController {
             }
 
             @Override
+            protected void process(java.util.List<Integer> updates) {
+                if (onProgress != null && !updates.isEmpty()) {
+                    onProgress.accept(updates.get(updates.size() - 1));
+                }
+            }
+
+            @Override
             protected void done() {
-                busy = false;
+                busy.set(false);
                 try {
                     CsvImportResult result = get();
                     status = "Done";
@@ -72,6 +82,12 @@ public final class ImportController {
                 }
             }
         };
-        worker.execute();
+        try {
+            worker.execute();
+        } catch (RuntimeException launchFailure) {
+            busy.set(false);
+            status = "Failed";
+            throw launchFailure;
+        }
     }
 }

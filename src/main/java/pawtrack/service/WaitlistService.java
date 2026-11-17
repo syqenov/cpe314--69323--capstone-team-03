@@ -22,14 +22,16 @@ import java.util.Set;
  */
 public final class WaitlistService {
 
+    // A dashboard SwingWorker may read totals while the EDT changes the FIFO.
+    // Serialize every public queue operation; collection snapshots are defensive copies.
     private final Map<Integer, Deque<Adopter>> waitlists = new HashMap<>();
 
-    public int size(int animalId) {
+    public synchronized int size(int animalId) {
         Deque<Adopter> queue = waitlists.get(animalId);
         return queue == null ? 0 : queue.size();
     }
 
-    public boolean hasAnyone(int animalId) {
+    public synchronized boolean hasAnyone(int animalId) {
         return size(animalId) > 0;
     }
 
@@ -38,7 +40,7 @@ public final class WaitlistService {
      *
      * @return the 1-based queue position of the adopter
      */
-    public int addInterest(int animalId, Adopter adopter) {
+    public synchronized int addInterest(int animalId, Adopter adopter) {
         if (adopter == null) {
             throw new IllegalArgumentException("adopter must not be null");
         }
@@ -52,7 +54,7 @@ public final class WaitlistService {
     }
 
     /** Peeks the next adopter in line without removing them. */
-    public Optional<Adopter> peekNext(int animalId) {
+    public synchronized Optional<Adopter> peekNext(int animalId) {
         Deque<Adopter> queue = waitlists.get(animalId);
         if (queue == null || queue.isEmpty()) {
             return Optional.empty();
@@ -61,7 +63,7 @@ public final class WaitlistService {
     }
 
     /** Removes and returns the next adopter in line (FIFO). */
-    public Optional<Adopter> pollNext(int animalId) {
+    public synchronized Optional<Adopter> pollNext(int animalId) {
         Deque<Adopter> queue = waitlists.get(animalId);
         if (queue == null || queue.isEmpty()) {
             return Optional.empty();
@@ -73,16 +75,16 @@ public final class WaitlistService {
         return Optional.of(next);
     }
 
-    public List<Adopter> queueFor(int animalId) {
+    public synchronized List<Adopter> queueFor(int animalId) {
         Deque<Adopter> queue = waitlists.get(animalId);
         return queue == null ? new ArrayList<>() : new ArrayList<>(queue);
     }
 
-    public Set<Integer> animalIds() {
+    public synchronized Set<Integer> animalIds() {
         return new HashSet<>(waitlists.keySet());
     }
 
-    public int totalWaiters() {
+    public synchronized int totalWaiters() {
         int total = 0;
         for (Deque<Adopter> queue : waitlists.values()) {
             total += queue.size();
@@ -90,14 +92,24 @@ public final class WaitlistService {
         return total;
     }
 
-    public void clear(int animalId) {
+    /** Removes a specific adopter without changing the order of other applicants. */
+    public synchronized boolean removeInterest(int animalId, int adopterId) {
+        Deque<Adopter> queue = waitlists.get(animalId);
+        if (queue == null) return false;
+        boolean removed = queue.removeIf(a -> a.getId() == adopterId);
+        if (queue.isEmpty()) waitlists.remove(animalId);
+        return removed;
+    }
+
+    public synchronized void clear(int animalId) {
         waitlists.remove(animalId);
     }
 
     private int indexOf(Deque<Adopter> queue, Adopter adopter) {
         int index = 0;
         for (Adopter queued : queue) {
-            if (queued.getEmail().equalsIgnoreCase(adopter.getEmail())) {
+            if ((queued.getId() > 0 && adopter.getId() > 0 && queued.getId() == adopter.getId())
+                    || queued.getEmail().equalsIgnoreCase(adopter.getEmail())) {
                 return index;
             }
             index++;

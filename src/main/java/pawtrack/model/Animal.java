@@ -39,7 +39,7 @@ public abstract class Animal {
         this.breed = breed.trim();
         this.ageMonths = ageMonths;
         this.intakeDate = intakeDate;
-        this.source = (source == null || source.isBlank()) ? "stray" : source.trim().toLowerCase();
+        this.source = normalizeSource(source);
         this.createdAt = createdAt == null ? LocalDate.now() : createdAt;
         this.status = status == null ? AnimalStatus.INTAKE : status;
     }
@@ -47,6 +47,15 @@ public abstract class Animal {
     protected Animal(int id, String name, String breed, int ageMonths,
                      LocalDate intakeDate, AnimalStatus status) {
         this(id, name, breed, ageMonths, intakeDate, "stray", LocalDate.now(), status);
+    }
+
+    /** Default source for legacy rows and callers that do not supply one. */
+    public static final String DEFAULT_SOURCE = "stray";
+
+    /** Single normalisation rule shared by the model and the DAO (trim, lower-case, blank -> default). */
+    public static String normalizeSource(String source) {
+        return (source == null || source.isBlank())
+                ? DEFAULT_SOURCE : source.trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     public abstract Species species();
@@ -69,6 +78,19 @@ public abstract class Animal {
                 return new Dog(id, name, breed, ageMonths, intakeDate, status);
             default:
                 return new Cat(id, name, breed, ageMonths, intakeDate, status);
+        }
+    }
+
+    /** Factory used when loading a stored row: keeps the persisted source and creation date. */
+    public static Animal create(Species species, int id, String name, String breed,
+                                int ageMonths, LocalDate intakeDate, String source,
+                                LocalDate createdAt, AnimalStatus status) {
+        Species resolved = species == null ? Species.CAT : species;
+        switch (resolved) {
+            case DOG:
+                return new Dog(id, name, breed, ageMonths, intakeDate, source, createdAt, status);
+            default:
+                return new Cat(id, name, breed, ageMonths, intakeDate, source, createdAt, status);
         }
     }
 

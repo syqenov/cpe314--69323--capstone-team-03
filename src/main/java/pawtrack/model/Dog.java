@@ -21,6 +21,11 @@ public final class Dog extends Animal {
         super(id, name, breed, ageMonths, intakeDate, status);
     }
 
+    public Dog(int id, String name, String breed, int ageMonths, LocalDate intakeDate,
+               String source, LocalDate createdAt, AnimalStatus status) {
+        super(id, name, breed, ageMonths, intakeDate, source, createdAt, status);
+    }
+
     public Dog(String name, String breed, int ageMonths, LocalDate intakeDate) {
         this(0, name, breed, ageMonths, intakeDate, AnimalStatus.INTAKE);
     }

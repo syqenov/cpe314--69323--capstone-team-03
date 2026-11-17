@@ -89,6 +89,16 @@ public final class CsvImportService {
      */
     public CsvImportResult importReader(Reader source, int estimatedTotal, ImportListener listener)
             throws IOException, SQLException {
+        // The application uses one SQLite JDBC connection. An import must not change
+        // auto-commit while adoption, reservation or waitlist transactions are running.
+        // Keep the lock for the whole transaction, not just BEGIN/COMMIT.
+        synchronized (database) {
+            return importReaderUnderDatabaseLock(source, estimatedTotal, listener);
+        }
+    }
+
+    private CsvImportResult importReaderUnderDatabaseLock(
+            Reader source, int estimatedTotal, ImportListener listener) throws IOException, SQLException {
         ImportListener progress = listener == null ? ImportListener.NONE : listener;
         long startedAt = System.currentTimeMillis();
         int imported = 0;
@@ -97,8 +107,11 @@ public final class CsvImportService {
         int newAdopters = 0;
 
         Connection connection = database.connection();
-        boolean previousAutoCommit = connection.getAutoCommit();
+        if (!connection.getAutoCommit()) {
+            throw new SQLException("CSV import cannot start during another database transaction");
+        }
         connection.setAutoCommit(false);
+        boolean previousAutoCommit = true;
         Map<String, Adopter> adopterCache = new HashMap<>();
 
         try (BufferedReader reader = new BufferedReader(source)) {

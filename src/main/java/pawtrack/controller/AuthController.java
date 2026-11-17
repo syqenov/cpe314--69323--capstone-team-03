@@ -29,8 +29,9 @@ public final class AuthController {
             if (found.isPresent()) {
                 User user = found.get();
                 if (PasswordHasher.verify(password, user.getPasswordSalt(), user.getPasswordHash())) {
-                    currentUser = user;
-                    return Optional.of(user);
+                    User linked = userDao.ensureLinkedAdopter(user);
+                    currentUser = linked;
+                    return Optional.of(linked);
                 }
             }
         } catch (SQLException e) {
@@ -38,6 +39,21 @@ public final class AuthController {
         }
         currentUser = null;
         return Optional.empty();
+    }
+
+    /** Password changes require the existing password, even for an active session. */
+    public void changeMyPassword(String oldPassword, String newPassword) throws SQLException {
+        User account = currentUser;
+        if (account == null || account.getId() == null) throw new UnauthorizedException("Login required");
+        if (!PasswordHasher.verify(oldPassword, account.getPasswordSalt(), account.getPasswordHash())) {
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+        PasswordPolicy.validate(newPassword);
+        String salt = PasswordHasher.generateSalt();
+        String hash = PasswordHasher.hash(newPassword, salt);
+        userDao.updatePassword(account.getId(), hash, salt);
+        currentUser = new User(account.getId(), account.getUsername(), hash, salt,
+                account.getRole(), account.getAdopterId());
     }
 
     public void logout() {
@@ -54,6 +70,20 @@ public final class AuthController {
 
     public boolean isAdopter() {
         return currentUser != null && currentUser.getRole() == Role.ADOPTER;
+    }
+
+    /** Blocks an adopter from reading or modifying someone else's records. */
+    public void requireAdopterOwnership(int adopterId) {
+        if (currentUser == null) {
+            throw new UnauthorizedException("Login required");
+        }
+        if (currentUser.getRole() == Role.STAFF) {
+            return;
+        }
+        if (currentUser.getAdopterId() == null
+                || currentUser.getAdopterId() != adopterId) {
+            throw new UnauthorizedException("You can only access your own records");
+        }
     }
 
     public void requireStaff() {
@@ -73,18 +103,22 @@ public final class AuthController {
         if (username == null || username.isBlank()) {
             throw new IllegalArgumentException("Username is required.");
         }
+        final String cleanName = username.trim();
         PasswordPolicy.validate(password);
         try {
-            if (userDao.findByUsername(username).isPresent()) {
+            if (userDao.existsIgnoreCase(cleanName)) {
                 throw new IllegalArgumentException("Username already exists.");
             }
             String salt = PasswordHasher.generateSalt();
             String hash = PasswordHasher.hash(password, salt);
-            User user = new User(null, username.trim(), hash, salt, Role.ADOPTER, null);
-            int id = userDao.create(user);
+            User user = new User(null, cleanName, hash, salt, Role.ADOPTER, null);
+            User created = userDao.createLinkedAdopter(user);
             LOGGER.info("Created new adopter account: " + user.getUsername());
-            return new User(id, user.getUsername(), hash, salt, Role.ADOPTER, null);
+            return created;
         } catch (SQLException e) {
+            if (e.getMessage() != null && e.getMessage().contains("UNIQUE constraint")) {
+                throw new IllegalArgumentException("Username already exists.", e);
+            }
             LOGGER.log(Level.SEVERE, "Account creation failed", e);
             throw new IllegalStateException("Could not create account", e);
         }

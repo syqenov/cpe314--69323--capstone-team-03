@@ -5,7 +5,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import pawtrack.controller.AuthController;
 import pawtrack.dao.Database;
+import pawtrack.dao.UserDao;
 import pawtrack.model.Role;
 import pawtrack.model.User;
 import pawtrack.service.AnalyticsService;
@@ -31,16 +33,11 @@ class MainFrameIntegrationTest {
     void setUp() throws Exception {
         database = Database.openInMemory();
 
-        testUser = new User(
-                1,
-                "testuser",
-                "hash",
-                "salt",
-                Role.STAFF,
-                null
-        );
+        AuthController authController = new AuthController(new UserDao(database));
+        testUser = authController.login("admin", "admin123").orElseThrow();
+        assertEquals(Role.STAFF, testUser.getRole());
 
-        frame = new MainFrame(testUser, database);
+        frame = new MainFrame(testUser, database, authController);
     }
 
     @AfterEach

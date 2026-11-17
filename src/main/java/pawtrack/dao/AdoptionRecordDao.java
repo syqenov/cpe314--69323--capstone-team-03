@@ -94,6 +94,17 @@ public final class AdoptionRecordDao {
         }
     }
 
+    /** Whether an animal already has a completed adoption on record. */
+    public boolean existsForAnimal(int animalId) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT 1 FROM adoption_record WHERE animal_id = ? LIMIT 1")) {
+            ps.setInt(1, animalId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
     public int count() throws SQLException {
         try (Statement statement = connection.createStatement();
              ResultSet rs = statement.executeQuery("SELECT COUNT(*) FROM adoption_record")) {

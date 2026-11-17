@@ -29,8 +29,8 @@ public final class AnimalDao {
     }
 
     public int insert(Animal animal) throws SQLException {
-        String sql = "INSERT INTO animal (name, species, breed, age_months, intake_date, status, classification_id) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO animal (name, species, breed, age_months, intake_date, status, "
+                + "classification_id, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, animal.getName());
             ps.setString(2, animal.species().label());
@@ -43,6 +43,8 @@ public final class AnimalDao {
             } else {
                 ps.setInt(7, animal.getClassificationId());
             }
+            ps.setString(8, Animal.normalizeSource(animal.getSource()));
+            ps.setString(9, animal.getCreatedAt().toString());
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -64,6 +66,15 @@ public final class AnimalDao {
         }
     }
 
+    /** Updates the animal to ADOPTED only when it is not already adopted. */
+    public boolean updateStatusIfNotAdopted(int animalId) throws SQLException {
+        String sql = "UPDATE animal SET status = 'ADOPTED' WHERE id = ? AND status <> 'ADOPTED'";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, animalId);
+            return ps.executeUpdate() == 1;
+        }
+    }
+
     /** Updates the editable animal details (everything except status/classification). */
     public boolean updateDetails(int animalId, String name, String breed, int ageMonths, LocalDate intakeDate)
             throws SQLException {
@@ -74,6 +85,29 @@ public final class AnimalDao {
             ps.setInt(3, ageMonths);
             ps.setString(4, intakeDate.toString());
             ps.setInt(5, animalId);
+            return ps.executeUpdate() == 1;
+        }
+    }
+
+    /** Updates the editable details together with the source. createdAt is never changed. */
+    public boolean updateDetails(int animalId, String name, String breed, int ageMonths,
+                                 LocalDate intakeDate, String source) throws SQLException {
+        String sql = "UPDATE animal SET name = ?, breed = ?, age_months = ?, intake_date = ?, source = ? WHERE id = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, name);
+            ps.setString(2, breed);
+            ps.setInt(3, ageMonths);
+            ps.setString(4, intakeDate.toString());
+            ps.setString(5, Animal.normalizeSource(source));
+            ps.setInt(6, animalId);
+            return ps.executeUpdate() == 1;
+        }
+    }
+
+    public boolean updateSource(int animalId, String source) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement("UPDATE animal SET source = ? WHERE id = ?")) {
+            ps.setString(1, Animal.normalizeSource(source));
+            ps.setInt(2, animalId);
             return ps.executeUpdate() == 1;
         }
     }
@@ -142,18 +176,33 @@ public final class AnimalDao {
 
     private Animal map(ResultSet rs) throws SQLException {
         Species species = Species.fromLabel(rs.getString("species"));
+        LocalDate intake = LocalDate.parse(rs.getString("intake_date"));
         Animal animal = Animal.create(
                 species,
                 rs.getInt("id"),
                 rs.getString("name"),
                 rs.getString("breed"),
                 rs.getInt("age_months"),
-                LocalDate.parse(rs.getString("intake_date")),
+                intake,
+                rs.getString("source"),
+                parseStoredDate(rs.getString("created_at"), intake),
                 AnimalStatus.fromLabel(rs.getString("status")));
         int classificationId = rs.getInt("classification_id");
         if (!rs.wasNull()) {
             animal.setClassificationId(classificationId);
         }
         return animal;
+    }
+
+    /** Parses a stored yyyy-MM-dd(…) value; falls back to a stable date instead of "today". */
+    private static LocalDate parseStoredDate(String value, LocalDate fallback) {
+        if (value == null || value.length() < 10) {
+            return fallback;
+        }
+        try {
+            return LocalDate.parse(value.substring(0, 10));
+        } catch (java.time.format.DateTimeParseException invalid) {
+            return fallback;
+        }
     }
 }
