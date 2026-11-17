@@ -9,12 +9,7 @@ import pawtrack.controller.AuthController;
 import pawtrack.controller.ClassificationController;
 import pawtrack.controller.ImportController;
 import pawtrack.controller.WaitlistController;
-import pawtrack.dao.AdopterDao;
-import pawtrack.dao.AdoptionRecordDao;
-import pawtrack.dao.AnimalDao;
-import pawtrack.dao.ClassificationDao;
 import pawtrack.dao.Database;
-import pawtrack.dao.WaitlistDao;
 import pawtrack.dao.UserDao;
 import pawtrack.model.Adopter;
 import pawtrack.model.AdoptionRecord;
@@ -24,7 +19,6 @@ import pawtrack.model.Species;
 import pawtrack.model.StatusChange;
 import pawtrack.service.AnalyticsService;
 import pawtrack.service.ClassificationService;
-import pawtrack.service.ShelterSeeder;
 import pawtrack.service.StatusHistoryService;
 import pawtrack.service.WaitlistService;
 
@@ -103,11 +97,6 @@ public final class MainFrame extends JFrame {
 
     private final Database database;
     private final AuthController sessionAuth;
-    private final AnimalDao animalDao;
-    private final AdopterDao adopterDao;
-    private final AdoptionRecordDao recordDao;
-    private final ClassificationDao classificationDao;
-    private final WaitlistDao waitlistDao;
 
     private ClassificationService classification;
     // Private helper for MainFrame GUI logic
@@ -132,6 +121,7 @@ public final class MainFrame extends JFrame {
     private final AnalyticsController analyticsController;
     private final ClassificationController classificationController;
     private final ImportController importController;
+    private final pawtrack.service.AdoptionReceiptService adoptionReceiptService;
 
     // Private helper for MainFrame GUI logic
     private final AnimalTableModel tableModel = new AnimalTableModel(waitlist);
@@ -205,41 +195,29 @@ public final class MainFrame extends JFrame {
         if (authController == null) {
             throw new IllegalArgumentException("Authenticated controller is required");
         }
-        if (authController.getCurrentUser() != null
-                && !authController.getCurrentUser().getUsername().equals(user.getUsername())) {
+        if (authController.getCurrentUser() == null
+                || !authController.getCurrentUser().getUsername().equals(user.getUsername())) {
             throw new IllegalArgumentException("Session user does not match window user");
         }
         this.user = user;
         this.sessionAuth = authController;
         this.database = database;
-        this.animalDao = new AnimalDao(database);
-        this.adopterDao = new AdopterDao(database);
-        this.recordDao = new AdoptionRecordDao(database);
-        this.classificationDao = new ClassificationDao(database);
-        this.waitlistDao = new WaitlistDao(database);
-
-        this.classification = ClassificationService.loadOrSeed(classificationDao);
-        ShelterSeeder.seedIfEmpty(database, classification);
-
-        this.animalController = new AnimalController(animalDao);
-        this.adoptionController = new AdoptionController(database, animalDao, adopterDao, recordDao, history, authController);
-        this.reservationService = new pawtrack.service.ReservationService(database,
-                new pawtrack.dao.ReservationDao(database), animalDao, authController);
-        this.myApplicationStatusService = new pawtrack.service.MyApplicationStatusService(
-                authController, new pawtrack.dao.ReservationDao(database));
-        this.notificationService = new pawtrack.service.AdopterNotificationService(
-                authController, new pawtrack.dao.ReservationDao(database));
-        this.notificationReadService = new pawtrack.service.NotificationReadService(
-                database, authController, new pawtrack.dao.ReservationDao(database));
-        this.accountSettingsService = new pawtrack.service.AccountSettingsService(authController, adopterDao);
-        this.applicationReviewService = new pawtrack.service.ApplicationReviewService(
-                authController, database, new pawtrack.dao.ReservationDao(database));
-        this.waitlistController = new WaitlistController(
-                waitlist, waitlistDao, adopterDao, animalDao, history, authController);
-        this.analyticsController = new AnalyticsController(animalDao, recordDao, analytics, waitlist, classification);
-        this.classificationController = new ClassificationController(classification, animalDao);
-        this.importController = new ImportController(database, classification, authController);
-        this.waitlistController.loadFromDb();
+        pawtrack.service.PawTrackWiring wired = new pawtrack.service.PawTrackWiring(
+                database, authController, waitlist, history, analytics);
+        this.classification = wired.classification;
+        this.animalController = wired.animals;
+        this.adoptionController = wired.adoptions;
+        this.waitlistController = wired.waitlists;
+        this.reservationService = wired.reservations;
+        this.notificationService = wired.notifications;
+        this.notificationReadService = wired.notificationReads;
+        this.accountSettingsService = wired.accountSettings;
+        this.applicationReviewService = wired.applicationReviews;
+        this.myApplicationStatusService = wired.myApplications;
+        this.analyticsController = wired.analytics;
+        this.classificationController = wired.classifications;
+        this.importController = wired.imports;
+        this.adoptionReceiptService = wired.receipts;
 
        
         animalTable.setAutoCreateRowSorter(true);
@@ -1469,6 +1447,10 @@ public final class MainFrame extends JFrame {
 
     // Private helper for MainFrame GUI logic
     private void onAddAnimal() {
+        if (!sessionAuth.isStaff()) {
+            warn("This action is available to shelter staff only.");
+            return;
+        }
         Animal draft = showAnimalForm(null, "Add Animal");
         if (draft == null) {
             return;
@@ -1479,13 +1461,17 @@ public final class MainFrame extends JFrame {
             refreshAnalytics();
             log("Added animal: " + draft.getName());
             statusLabel.setText("Added " + draft.getName());
-        } catch (SQLException | IllegalArgumentException failure) {
+        } catch (SQLException | IllegalArgumentException | IllegalStateException failure) {
             error("Could not add animal", failure);
         }
     }
 
     // Private helper for MainFrame GUI logic
     private void onEditAnimal() {
+        if (!sessionAuth.isStaff()) {
+            warn("This action is available to shelter staff only.");
+            return;
+        }
         Animal animal = selectedAnimal();
         if (animal == null) {
             info("Select an animal in the table first.");
@@ -1501,13 +1487,17 @@ public final class MainFrame extends JFrame {
             refreshAnalytics();
             log("Edited animal: " + draft.getName());
             statusLabel.setText("Updated " + draft.getName());
-        } catch (SQLException | IllegalArgumentException failure) {
+        } catch (SQLException | IllegalArgumentException | IllegalStateException failure) {
             error("Could not edit animal", failure);
         }
     }
 
     // Private helper for MainFrame GUI logic
     private void onDeleteAnimal() {
+        if (!sessionAuth.isStaff()) {
+            warn("This action is available to shelter staff only.");
+            return;
+        }
         Animal animal = selectedAnimal();
         if (animal == null) {
             info("Select an animal in the table first.");
@@ -1524,7 +1514,7 @@ public final class MainFrame extends JFrame {
             refreshAnalytics();
             log("Deleted animal: " + animal.getName());
             statusLabel.setText("Deleted " + animal.getName());
-        } catch (SQLException failure) {
+        } catch (SQLException | IllegalStateException failure) {
             error("Could not delete animal", failure);
         }
     }
@@ -1911,8 +1901,7 @@ public final class MainFrame extends JFrame {
             if (chosenReceiptId == null && selected == null) return;
             int id = chosenReceiptId != null ? chosenReceiptId : Integer.parseInt(
                     selected.substring("Receipt #".length(), selected.indexOf(" — ")));
-            String text = new pawtrack.service.AdoptionReceiptService(sessionAuth, recordDao, animalDao, adopterDao)
-                    .receiptFor(id);
+            String text = adoptionReceiptService.receiptFor(id);
             JTextArea display = new JTextArea(text, 12, 48);
             display.setEditable(false);
             display.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 13));
@@ -1987,7 +1976,7 @@ public final class MainFrame extends JFrame {
                 sb.append("  (none)\n");
             } else {
                 for (AdoptionRecord record : adopted) {
-                    Animal animal = animalDao.findById(record.getAnimalId()).orElse(null);
+                    Animal animal = animalController.findById(record.getAnimalId()).orElse(null);
                     String label = animal != null
                             ? animal.getName() + " (" + animal.species().label() + ")"
                             : "Animal #" + record.getAnimalId();
@@ -2010,7 +1999,7 @@ public final class MainFrame extends JFrame {
     // Private helper for MainFrame GUI logic
     private Adopter resolveMyAdopter() throws SQLException {
         if (user.getAdopterId() != null) {
-            return adopterDao.findById(user.getAdopterId()).orElse(null);
+            return adoptionController.findMyAdopter().orElse(null);
         }
         // Never infer account ownership from a matching name or email.
         return null;
@@ -2037,7 +2026,7 @@ public final class MainFrame extends JFrame {
         }
         try {
             AdoptionRecord record = adoptionController.markAdopted(animal, adopter);
-            Adopter persisted = adopterDao.findById(record.getAdopterId()).orElse(adopter);
+            Adopter persisted = adoptionController.findAdopterForStaff(record.getAdopterId()).orElse(adopter);
             // Adoption completion must not poll and remove another waitlist entry.
             // Application closure/reservation handling is a separate workflow.
             refreshAnimals();
@@ -2067,7 +2056,7 @@ public final class MainFrame extends JFrame {
             refreshAnimals();
             log("Undid status change -> " + change);
             statusLabel.setText("Reverted " + change);
-        } catch (SQLException failure) {
+        } catch (SQLException | IllegalStateException failure) {
             error("Undo failed", failure);
         }
     }
@@ -2251,7 +2240,7 @@ public final class MainFrame extends JFrame {
                         .filter(a -> a.getStatus() == AnimalStatus.ADOPTED).count(),
                         Double.NaN, requests);
             }
-            try { dashboardPanel.setMonthlyAdoptions(recordDao.findAll()); }
+            try { dashboardPanel.setMonthlyAdoptions(adoptionController.allAdoptionsForStaff()); }
             catch (SQLException error) { LOGGER.log(java.util.logging.Level.WARNING,
                     "Could not load adoption trend", error); }
         } else {
