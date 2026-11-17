@@ -59,14 +59,42 @@ public final class AdoptionController {
         this.database = database;
     }
 
+    private void requireStaff() {
+        if (auth == null) {
+            throw new UnauthorizedException("Authenticated staff session required");
+        }
+        auth.requireStaff();
+    }
+
+    /** Staff-only lookup for an adoption completion confirmation. */
+    public Optional<Adopter> findAdopterForStaff(int adopterId) throws SQLException {
+        requireStaff();
+        return adopterDao.findById(adopterId);
+    }
+
+    /** Returns only the signed-in adopter's own profile. */
+    public Optional<Adopter> findMyAdopter() throws SQLException {
+        if (auth == null || auth.getCurrentUser() == null) {
+            throw new UnauthorizedException("Login required");
+        }
+        Integer adopterId = auth.getCurrentUser().getAdopterId();
+        if (adopterId == null) return Optional.empty();
+        auth.requireAdopterOwnership(adopterId);
+        return adopterDao.findById(adopterId);
+    }
+
+    /** Staff-only data source for the adoption trend panel. */
+    public List<AdoptionRecord> allAdoptionsForStaff() throws SQLException {
+        requireStaff();
+        return recordDao.findAll();
+    }
+
     /**
      * Completes an adoption: persists the adopter, writes the adoption record,
      * marks the animal ADOPTED and records the status change for undo.
      */
     public AdoptionRecord markAdopted(Animal animal, Adopter adopter) throws SQLException {
-        if (auth != null) {
-            auth.requireStaff();
-        }
+        requireStaff();
         if (adoptionTransactions == null) {
             throw new IllegalStateException("A database-aware adoption controller is required");
         }
@@ -78,10 +106,7 @@ public final class AdoptionController {
      * No free-text adopter data is accepted from the UI.
      */
     public AdoptionRecord completeReserved(int animalId) throws SQLException {
-        if (auth == null) {
-            throw new IllegalStateException("An authenticated staff session is required");
-        }
-        auth.requireStaff();
+        requireStaff();
         if (adoptionTransactions == null) {
             throw new IllegalStateException("A database-aware adoption controller is required");
         }
@@ -99,9 +124,7 @@ public final class AdoptionController {
 
     /** Reverts the most recent status change; returns the undone change if any. */
     public Optional<StatusChange> undoLastStatus() throws SQLException {
-        if (auth != null) {
-            auth.requireStaff();
-        }
+        requireStaff();
         // Undoing ADOPTED without reversing the adoption record would corrupt
         // the application state. A dedicated reversal workflow is required.
         if (history.peekMostRecent().filter(change -> change.to() == AnimalStatus.ADOPTED).isPresent()) {
@@ -117,13 +140,11 @@ public final class AdoptionController {
 
     /** All adoption records for a specific adopter. */
     public List<AdoptionRecord> findAdoptionsByAdopterId(int adopterId) throws SQLException {
-        if (auth != null) {
-            auth.requireAdopterOwnership(adopterId);
+        if (auth == null) {
+            throw new UnauthorizedException("Login required");
         }
+        auth.requireAdopterOwnership(adopterId);
         return recordDao.findByAdopterId(adopterId);
     }
 
-    public AdoptionRecordDao getRecordDao() {
-        return recordDao;
-    }
 }
