@@ -20,8 +20,10 @@ public final class WaitlistDao {
     }
 
     private final Connection connection;
+    private final Database database;
 
     public WaitlistDao(Database database) {
+        this.database = java.util.Objects.requireNonNull(database, "database");
         this.connection = database.connection();
     }
 
@@ -59,6 +61,14 @@ public final class WaitlistDao {
      * The caller must update its in-memory FIFO only after this succeeds.
      */
     public boolean removeAndShift(int animalId, int adopterId, int position) throws SQLException {
+        // Multi-statement FIFO edits share the same lock as adoption and CSV import.
+        synchronized (database) {
+            return removeAndShiftUnderDatabaseLock(animalId, adopterId, position);
+        }
+    }
+
+    private boolean removeAndShiftUnderDatabaseLock(int animalId, int adopterId, int position)
+            throws SQLException {
         if (!connection.getAutoCommit()) {
             throw new SQLException("Waitlist update requires an available database transaction");
         }

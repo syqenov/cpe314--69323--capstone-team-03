@@ -26,12 +26,17 @@ import javax.swing.table.*;
  * The table model and JTable stay stable for MainFrame's row-to-model mapping.
  */
 public final class WaitlistPanel extends JPanel {
-    private static final Color NAVY = new Color(0x1B3157);
-    private static final Color BLUE = new Color(0x2F6BC6);
-    private static final Color TEXT = new Color(0x152D53);
-    private static final Color SUB = new Color(0x5C7293);
-    private static final Color CANVAS = new Color(0xF2F7FF);
-    private static final Color EDGE = new Color(0xD4E4FC);
+    @Override protected void paintComponent(java.awt.Graphics graphics) {
+        super.paintComponent(graphics);
+        PawTrackBackdrop.paint(graphics, this);
+    }
+
+    private static final Color NAVY = PawTrackTheme.NAVY;
+    private static final Color BLUE = PawTrackTheme.BLUE;
+    private static final Color TEXT = PawTrackTheme.NAVY;
+    private static final Color SUB = PawTrackTheme.MUTED;
+    private static final Color CANVAS = PawTrackTheme.CANVAS;
+    private static final Color EDGE = PawTrackTheme.LINE;
 
     private final DefaultTableModel tableModel;
     private final JTable table;
@@ -148,17 +153,17 @@ public final class WaitlistPanel extends JPanel {
         JButton details = new JButton("View Application");
         details.setName("waitlistViewApplication");
         details.addActionListener(e -> viewDetails.run());
-        styleButton(details, new Color(0xFFFFFF), BLUE, EDGE, ActionIcon.Kind.DOCUMENT);
+        styleButton(details, new Color(0xEEF2FF), new Color(0x294D9B), new Color(0xB6C6FF), ActionIcon.Kind.DOCUMENT);
         details.setToolTipText("Open the currently selected waitlist application");
         // Five buttons always stay on ONE LINE. When the window becomes too
         // narrow, scroll the action strip horizontally instead of wrapping.
         JPanel actions = new JPanel(new GridLayout(1, 5, 9, 0));
         actions.setOpaque(false);
         actions.setPreferredSize(new Dimension(1035, 55));
-        styleButton(refresh, new Color(0xFFFFFF), NAVY, EDGE, ActionIcon.Kind.REFRESH);
-        styleButton(reserve, new Color(0x286BD1), Color.WHITE, new Color(0x286BD1), ActionIcon.Kind.PEOPLE);
-        styleButton(complete, new Color(0x159A7B), Color.WHITE, new Color(0x159A7B), ActionIcon.Kind.CHECK);
-        styleButton(cancel, new Color(0xFFF3F3), new Color(0xAC334B), new Color(0xF7C7D0), ActionIcon.Kind.CROSS);
+        styleButton(refresh, new Color(0xEAF4FF), new Color(0x1F4E79), new Color(0x9BCBE8), ActionIcon.Kind.REFRESH);
+        styleButton(reserve, new Color(0x0F6E8C), Color.WHITE, new Color(0x0A5977), ActionIcon.Kind.PEOPLE);
+        styleButton(complete, new Color(0x169E86), Color.WHITE, new Color(0x0D866F), ActionIcon.Kind.CHECK);
+        styleButton(cancel, new Color(0xF8E8EC), new Color(0xB23A48), new Color(0xE5A6B3), ActionIcon.Kind.CROSS);
         actions.add(refresh);
         actions.add(reserve);
         actions.add(complete);
@@ -209,13 +214,13 @@ public final class WaitlistPanel extends JPanel {
         filter.setFont(new Font("Segoe UI", Font.BOLD, 12));
         filter.setPreferredSize(new Dimension(185, 42));
         JPanel filterWrap = new RoundedSurface(Color.WHITE, 20, EDGE);
-        filterWrap.setLayout(new BorderLayout(5, 0));
-        filterWrap.setBorder(new EmptyBorder(2, 10, 2, 6));
+        filterWrap.setLayout(new BorderLayout(8, 0));
+        filterWrap.setBorder(new EmptyBorder(2, 12, 2, 8));
         filterWrap.add(new FilterIcon(), BorderLayout.WEST);
         filter.setOpaque(false);
         filter.setBorder(BorderFactory.createEmptyBorder());
         filterWrap.add(filter, BorderLayout.CENTER);
-        filterWrap.setPreferredSize(new Dimension(208, 44));
+        filterWrap.setPreferredSize(new Dimension(216, 44));
         filters.add(filterWrap, BorderLayout.EAST);
         upper.add(filters);
 
@@ -482,7 +487,7 @@ public final class WaitlistPanel extends JPanel {
             Graphics2D gg = (Graphics2D) g.create();
             gg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             gg.setClip(new RoundRectangle2D.Double(0, 0, getWidth()-1, getHeight()-1, 22, 22));
-            gg.setPaint(new GradientPaint(0, 0, new Color(0x19437E), getWidth(), 0, new Color(0x438BDD)));
+            gg.setPaint(new GradientPaint(0, 0, PawTrackTheme.HERO_START, getWidth(), 0, PawTrackTheme.HERO_END));
             gg.fillRect(0, 0, getWidth(), getHeight());
             gg.setColor(new Color(255, 255, 255, 30));
             gg.fillOval(getWidth()-330, -115, 360, 230);
@@ -547,13 +552,32 @@ public final class WaitlistPanel extends JPanel {
     }
 
     private static final class FilterIcon extends JComponent {
-        FilterIcon() { setPreferredSize(new Dimension(18, 20)); }
+        FilterIcon() {
+            setPreferredSize(new Dimension(22, 22));
+            setMinimumSize(new Dimension(22, 22));
+            setOpaque(false);
+        }
         @Override protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
             Graphics2D x = (Graphics2D) g.create();
-            x.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            x.setColor(BLUE); x.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            x.drawLine(1, 3, 17, 3); x.drawLine(5, 8, 13, 8); x.drawLine(8, 13, 10, 13);
-            x.dispose();
+            try {
+                x.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                x.setColor(new Color(0x2C65B5));
+                x.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                int cx = getWidth() / 2;
+                int cy = getHeight() / 2;
+                java.awt.geom.Path2D funnel = new java.awt.geom.Path2D.Double();
+                funnel.moveTo(cx - 8, cy - 7);
+                funnel.lineTo(cx + 8, cy - 7);
+                funnel.lineTo(cx + 2, cy);
+                funnel.lineTo(cx + 2, cy + 6);
+                funnel.lineTo(cx - 2, cy + 8);
+                funnel.lineTo(cx - 2, cy);
+                funnel.closePath();
+                x.draw(funnel);
+            } finally {
+                x.dispose();
+            }
         }
     }
 

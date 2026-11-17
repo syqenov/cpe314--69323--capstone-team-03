@@ -24,6 +24,7 @@ public final class WaitlistController {
     private final AnimalDao animalDao;
     private final StatusHistoryService history;
     private final AuthController auth;
+    private final ReservationDao reservationDao;
 
     public WaitlistController(WaitlistService waitlist, WaitlistDao waitlistDao,
                               AdopterDao adopterDao, AnimalDao animalDao,
@@ -34,7 +35,15 @@ public final class WaitlistController {
     public WaitlistController(WaitlistService waitlist, WaitlistDao waitlistDao,
                               AdopterDao adopterDao, AnimalDao animalDao,
                               StatusHistoryService history, AuthController auth) {
+        this(waitlist, waitlistDao, adopterDao, animalDao, history, auth, null);
+    }
+
+    public WaitlistController(WaitlistService waitlist, WaitlistDao waitlistDao,
+                              AdopterDao adopterDao, AnimalDao animalDao,
+                              StatusHistoryService history, AuthController auth,
+                              ReservationDao reservationDao) {
         this.auth = auth;
+        this.reservationDao = reservationDao;
         this.waitlist = waitlist;
         this.waitlistDao = waitlistDao;
         this.adopterDao = adopterDao;
@@ -46,13 +55,18 @@ public final class WaitlistController {
         if (auth != null && auth.getCurrentUser() == null) {
             throw new UnauthorizedException("Login required");
         }
+        Adopter persisted;
         if (auth != null && auth.isAdopter()) {
+            // The authenticated adopter ID is the only identity; name/email on the argument are ignored.
             Integer ownId = auth.getCurrentUser().getAdopterId();
-            if (ownId == null || adopter.getId() != ownId) {
+            if (ownId == null || adopter == null || adopter.getId() != ownId) {
                 throw new UnauthorizedException("You can only register your own interest");
             }
+            persisted = adopterDao.findById(ownId)
+                    .orElseThrow(() -> new UnauthorizedException("Your adopter profile was not found"));
+        } else {
+            persisted = adopterDao.findOrCreate(adopter);
         }
-        Adopter persisted = adopterDao.findOrCreate(adopter);
         int existingPosition = waitlist.queueFor(animal.getId()).indexOf(persisted);
         if (existingPosition >= 0) {
             return existingPosition + 1;
@@ -70,6 +84,14 @@ public final class WaitlistController {
             history.record(animal.getId(), previous, AnimalStatus.PENDING);
         }
         return position;
+    }
+
+    /** Uses the reservation dependency supplied by the application composition root. */
+    public void withdrawMyInterest(int animalId) throws SQLException {
+        if (reservationDao == null) {
+            throw new IllegalStateException("Reservation dependency is not configured");
+        }
+        withdrawMyInterest(animalId, reservationDao);
     }
 
     /** Adopters may withdraw only their own pending requests, not active reservations. */
