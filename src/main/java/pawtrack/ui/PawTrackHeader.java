@@ -10,6 +10,9 @@ public final class PawTrackHeader extends JPanel {
     private static final Color NAVY = new Color(0x172E55);
     private static final Color BLUE = new Color(0x356ABE);
     private JButton notificationButton;
+    private JButton appearanceButton;
+    private Runnable appearanceAction;
+    private java.util.function.BooleanSupplier darkTheme;
     private IntSupplier unreadCountSupplier;
 
     public PawTrackHeader(String role) { this(role, null); }
@@ -54,6 +57,11 @@ public final class PawTrackHeader extends JPanel {
             });
             right.add(notificationButton);
         }
+        appearanceButton = topButton("Dark Mode");
+        appearanceButton.setName("globalThemeToggle");
+        appearanceButton.setToolTipText("Switch between Light and Midnight Navy themes (Ctrl+T)");
+        appearanceButton.addActionListener(e -> { if (appearanceAction != null) appearanceAction.run(); });
+        right.add(appearanceButton);
         JLabel avatar = new JLabel(" " + ("STAFF".equalsIgnoreCase(role) ? "ST" : "AD") + " ", SwingConstants.CENTER);
         avatar.setOpaque(true);
         avatar.setBackground(new Color(0x2D4D88));
@@ -72,6 +80,18 @@ public final class PawTrackHeader extends JPanel {
         right.add(account);
         add(right, BorderLayout.EAST);
         refreshNotificationBadge();
+    }
+
+    /** Set by MainFrame; this view does not own persistence or account services. */
+    public void setAppearanceAction(Runnable action, java.util.function.BooleanSupplier isDark) {
+        this.appearanceAction = action;
+        this.darkTheme = isDark;
+        refreshAppearanceButton();
+    }
+    public void refreshAppearanceButton() {
+        if (appearanceButton == null) return;
+        boolean dark = darkTheme != null && darkTheme.getAsBoolean();
+        appearanceButton.setText(dark ? "Light Mode" : "Dark Mode");
     }
 
     private static JButton topButton(String name) {
@@ -103,9 +123,9 @@ public final class PawTrackHeader extends JPanel {
         @Override protected void paintComponent(Graphics g) {
             Graphics2D gg = (Graphics2D) g.create();
             gg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            gg.setColor(new Color(0xE5EEFD));
+            gg.setColor(PawTrackTheme.isDark() ? PawTrackTheme.DARK_INPUT : new Color(0xE5EEFD));
             gg.fillRoundRect(0, 0, 37, 37, 12, 12);
-            gg.setColor(BLUE);
+            gg.setColor(PawTrackTheme.isDark() ? PawTrackTheme.DARK_ACCENT : BLUE);
             gg.fillOval(13, 18, 13, 11);
             gg.fillOval(8, 10, 6, 8);
             gg.fillOval(16, 6, 6, 8);

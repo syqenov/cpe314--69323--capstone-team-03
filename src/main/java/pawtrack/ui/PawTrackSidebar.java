@@ -67,7 +67,7 @@ public final class PawTrackSidebar extends JPanel {
     @Override protected void paintComponent(Graphics g) {
         Graphics2D gg = (Graphics2D) g.create();
         gg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        gg.setPaint(new GradientPaint(0, 0, new Color(0x1F3868), 0, getHeight(), new Color(0x121F3B)));
+        gg.setPaint(new GradientPaint(0, 0, PawTrackTheme.isDark() ? PawTrackTheme.DARK_SIDEBAR : new Color(0x1F3868), 0, getHeight(), PawTrackTheme.isDark() ? new Color(0x101B2B) : new Color(0x121F3B)));
         gg.fillRect(0, 0, getWidth(), getHeight());
         if (getWidth() > 150 && getHeight() > 460) {
             gg.setColor(new Color(255, 255, 255, 13));
