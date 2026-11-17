@@ -73,6 +73,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.awt.Font;
+import java.awt.FlowLayout;
 
 /**
  * Main application window (GUI). Connects to Main (entry point), Database, DAOs,
@@ -151,7 +153,7 @@ public final class MainFrame extends JFrame {
     private final java.util.List<String> tabNames = new java.util.ArrayList<>();
     private JPanel toolbar;
     private JPanel imagePanel;
-    private JButton samplePreviewToggle;
+    private JPanel samplePreviewContainer;
     private boolean toolbarMinimized = false;
     private javax.swing.JDialog statusPopup;
     private final User user;
@@ -371,6 +373,8 @@ public final class MainFrame extends JFrame {
         animalTable.getTableHeader().setForeground(Color.WHITE);
         animalTable.setDefaultRenderer(Object.class, new BlueTableRenderer());
         animalTable.setDefaultRenderer(Number.class, new BlueTableRenderer());
+        // Render status values as color-coded badges in the status column.
+        animalTable.getColumnModel().getColumn(6).setCellRenderer(new StatusBadgeRenderer());
         animalTable.getTableHeader().setDefaultRenderer(new javax.swing.table.DefaultTableCellRenderer() {
             @Override
             public java.awt.Component getTableCellRendererComponent(javax.swing.JTable table, Object value,
@@ -807,29 +811,54 @@ public final class MainFrame extends JFrame {
         JPanel workspace = new JPanel(new BorderLayout(12, 0));
         workspace.setBackground(PANEL_BLUE);
         workspace.add(panel, BorderLayout.CENTER);
+        // STAFF actions belong beside the selected animal, not in Tools & Settings.
+        // Reuse the existing secured MainFrame handlers (no controller changes).
+        if (user.getRole() == Role.STAFF) {
+            JPanel animalActions = new JPanel(new BorderLayout(12, 0));
+            animalActions.setOpaque(false);
+            animalActions.setBorder(BorderFactory.createEmptyBorder(10, 22, 0, 22));
+
+            JLabel actionHeading = new JLabel("MANAGE ANIMALS");
+            actionHeading.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            actionHeading.setForeground(NAVY_BLUE);
+            animalActions.add(actionHeading, BorderLayout.WEST);
+
+            JPanel actionButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 9, 0));
+            actionButtons.setOpaque(false);
+            JButton addAnimalAction = PremiumUi.button("Add Animal", this::onAddAnimal, true);
+            JButton editAnimalAction = PremiumUi.button("Edit Selected", this::onEditAnimal, false);
+            JButton deleteAnimalAction = PremiumUi.button("Delete Selected", this::onDeleteAnimal, false);
+            addAnimalAction.setName("animalsAddButton");
+            editAnimalAction.setName("animalsEditButton");
+            deleteAnimalAction.setName("animalsDeleteButton");
+            addAnimalAction.setToolTipText("Register a new animal");
+            editAnimalAction.setToolTipText("Edit the animal selected in the table or gallery");
+            deleteAnimalAction.setToolTipText("Delete the selected animal (confirmation required)");
+            // Disable selection-dependent actions until an animal is selected.
+            Runnable syncAnimalActions = () -> {
+                boolean selected = animalTable.getSelectedRow() >= 0;
+                editAnimalAction.setEnabled(selected);
+                deleteAnimalAction.setEnabled(selected);
+            };
+            animalTable.getSelectionModel().addListSelectionListener(e -> {
+                if (!e.getValueIsAdjusting()) syncAnimalActions.run();
+            });
+            syncAnimalActions.run();
+            actionButtons.add(addAnimalAction);
+            actionButtons.add(editAnimalAction);
+            actionButtons.add(deleteAnimalAction);
+            animalActions.add(actionButtons, BorderLayout.EAST);
+            workspace.add(animalActions, BorderLayout.NORTH);
+        }
         JPanel preview = buildImagePanel();
+        samplePreviewContainer = preview;
         preview.setPreferredSize(new Dimension(296, 0));
         preview.setMinimumSize(new Dimension(260, 0));
         preview.setName("animalSamplePreview");
         preview.setVisible(false);
         workspace.add(preview, BorderLayout.EAST);
-        // Preview is optional: most of the time the searchable animal table
-        // should be wide enough to show all columns without horizontal clipping.
-        JButton previewToggle = new JButton("Show sample image");
-        this.samplePreviewToggle = previewToggle;
-        previewToggle.setName("animalPreviewToggle");
-        previewToggle.setFont(BODY_FONT);
-        previewToggle.setFocusPainted(false);
-        previewToggle.addActionListener(e -> {
-            preview.setVisible(!preview.isVisible());
-            previewToggle.setText(preview.isVisible() ? "Hide sample image" : "Show sample image");
-            workspace.revalidate();
-            workspace.repaint();
-        });
-        JPanel toggleBar = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 12, 5));
-        toggleBar.setOpaque(false);
-        toggleBar.add(previewToggle);
-        workspace.add(toggleBar, BorderLayout.SOUTH);
+        // No redundant "Show sample image" button. The optional sample preview
+        // still opens automatically when Fetch Sample Pet Image is requested.
         return workspace;
     }
 
@@ -900,6 +929,42 @@ public final class MainFrame extends JFrame {
         }
     }
 
+    /** Cohesive, muted status palette with strong legibility and selection feedback. */
+    private static final class StatusBadgeRenderer extends javax.swing.table.DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean selected, boolean focus, int row, int column) {
+            super.getTableCellRendererComponent(table, value, selected, focus, row, column);
+            String label = value == null ? "" : value.toString();
+            String state = label.toUpperCase(java.util.Locale.ROOT);
+            Color textColor;
+            Color fillColor;
+            if (state.contains("AVAILABLE")) {
+                textColor = new Color(0x17665A); fillColor = new Color(0xDDF2ED);
+            } else if (state.contains("ADOPTED")) {
+                textColor = new Color(0x315F8B); fillColor = new Color(0xE0EDF9);
+            } else if (state.contains("RESERV")) {
+                textColor = new Color(0x175C79); fillColor = new Color(0xDCEFF4);
+            } else if (state.contains("PEND") || state.contains("WAIT") || state.contains("INTAKE")) {
+                textColor = new Color(0x97583B); fillColor = new Color(0xF9E9DF);
+            } else if (state.contains("RETURN")) {
+                textColor = new Color(0x53687E); fillColor = new Color(0xE9EFF5);
+            } else {
+                textColor = new Color(0x485F78); fillColor = new Color(0xE6EDF4);
+            }
+            setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+            setFont(LABEL_FONT);
+            setOpaque(true);
+            setForeground(selected ? Color.WHITE : textColor);
+            setBackground(selected ? new Color(0x315FAD) : fillColor);
+            setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createEmptyBorder(3, 6, 3, 6),
+                    new RoundedUi.RoundedBorder(12,
+                            selected ? new Color(0x244C8E) : fillColor, 1)));
+            return this;
+        }
+    }
+
     // Private helper for MainFrame GUI logic
     private JPanel buildImagePanel() {
         imagePanel = new JPanel();
@@ -920,7 +985,7 @@ public final class MainFrame extends JFrame {
         imagePanel.add(imageSubtitle);
         imagePanel.add(Box.createVerticalStrut(12));
 
-        JPanel previewCard = new JPanel(new BorderLayout());
+        previewCard = new JPanel(new BorderLayout());
         previewCard.setBackground(new Color(0xF7FBFF));
         previewCard.setBorder(BorderFactory.createCompoundBorder(
                 new RoundedUi.RoundedBorder(20, BORDER_BLUE, 1),
@@ -1102,10 +1167,14 @@ public final class MainFrame extends JFrame {
         animalTable.setDefaultRenderer(Number.class, new BlueTableRenderer());
         animalTable.repaint();
         logArea.setCaretColor(fg);
-        myRecordsArea.setBackground(bg);
-        myRecordsArea.setForeground(fg);
-        waitlistTable.setBackground(tableBg);
-        waitlistTable.setForeground(fg);
+        if (myRecordsArea != null) {
+            myRecordsArea.setBackground(bg);
+            myRecordsArea.setForeground(fg);
+        }
+        if (waitlistTable != null) {
+            waitlistTable.setBackground(tableBg);
+            waitlistTable.setForeground(fg);
+        }
         statusPopup = null; // Force rebuild with new colors
 
         // Update tab button colors
@@ -1462,46 +1531,132 @@ public final class MainFrame extends JFrame {
 
     // Private helper for MainFrame GUI logic
     private Animal showAnimalForm(Animal existing, String title) {
-        JTextField name = new JTextField(existing != null ? existing.getName() : "", 16);
+        JTextField name = animalTextField(existing == null ? "" : existing.getName());
         JComboBox<Species> species = new JComboBox<>(Species.values());
-        if (existing != null) {
-            species.setSelectedItem(existing.species());
-        }
-        JTextField breed = new JTextField(existing != null ? existing.getBreed() : "", 16);
-        JTextField age = new JTextField(existing != null ? String.valueOf(existing.getAgeMonths()) : "0", 6);
-        JTextField intake = new JTextField(
-                existing != null ? existing.getIntakeDate().toString() : LocalDate.now().toString(), 12);
+        if (existing != null) species.setSelectedItem(existing.species());
+        JTextField breed = animalTextField(existing == null ? "" : existing.getBreed());
+        JTextField age = animalTextField(existing == null ? "0" : String.valueOf(existing.getAgeMonths()));
+        JTextField intake = animalTextField(existing == null ? LocalDate.now().toString()
+                : existing.getIntakeDate().toString());
         JComboBox<AnimalStatus> status = new JComboBox<>(AnimalStatus.values());
-        status.setSelectedItem(existing != null ? existing.getStatus() : AnimalStatus.INTAKE);
+        status.setSelectedItem(existing == null ? AnimalStatus.INTAKE : existing.getStatus());
+        styleAnimalCombo(species);
+        styleAnimalCombo(status);
 
-        JPanel form = new JPanel(new GridLayout(0, 2, 6, 6));
-        form.add(new JLabel("Name:"));
-        form.add(name);
-        form.add(new JLabel("Species:"));
-        form.add(species);
-        form.add(new JLabel("Breed:"));
-        form.add(breed);
-        form.add(new JLabel("Age (months):"));
-        form.add(age);
-        form.add(new JLabel("Intake date (yyyy-mm-dd):"));
-        form.add(intake);
-        form.add(new JLabel("Status:"));
-        form.add(status);
+        JPanel fields = new JPanel(new GridLayout(0, 2, 16, 13));
+        fields.setOpaque(false);
+        addAnimalFormField(fields, "Pet name", name);
+        addAnimalFormField(fields, "Species", species);
+        addAnimalFormField(fields, "Breed", breed);
+        addAnimalFormField(fields, "Age in months", age);
+        addAnimalFormField(fields, "Intake date (yyyy-MM-dd)", intake);
+        addAnimalFormField(fields, "Current status", status);
 
-        int result = JOptionPane.showConfirmDialog(this, form, title, JOptionPane.OK_CANCEL_OPTION);
-        if (result != JOptionPane.OK_OPTION) {
-            return null;
-        }
-        try {
-            int ageMonths = Integer.parseInt(age.getText().trim());
-            LocalDate intakeDate = LocalDate.parse(intake.getText().trim());
-            int id = existing != null ? existing.getId() : 0;
-            return Animal.create((Species) species.getSelectedItem(), id, name.getText().trim(),
-                    breed.getText().trim(), ageMonths, intakeDate, (AnimalStatus) status.getSelectedItem());
-        } catch (RuntimeException failure) {
-            error("Invalid animal details", failure);
-            return null;
-        }
+        JPanel content = new JPanel(new BorderLayout(0, 18));
+        content.setBackground(new Color(0xF6F9FD));
+        content.setBorder(BorderFactory.createEmptyBorder(24, 28, 24, 28));
+        JPanel heading = new JPanel(new GridLayout(0, 1, 0, 4));
+        heading.setOpaque(false);
+        JLabel headingTitle = new JLabel(existing == null ? "Register a new pet" : "Update pet details");
+        headingTitle.setFont(new Font("Segoe UI", Font.BOLD, 21));
+        headingTitle.setForeground(NAVY_BLUE);
+        JLabel description = new JLabel(existing == null
+                ? "Enter the animal's shelter information below."
+                : "Review the animal's information before saving changes.");
+        description.setFont(BODY_FONT);
+        description.setForeground(new Color(0x59758B));
+        heading.add(headingTitle);
+        heading.add(description);
+        content.add(heading, BorderLayout.NORTH);
+        JPanel fieldCard = new JPanel(new BorderLayout());
+        fieldCard.setBackground(Color.WHITE);
+        fieldCard.setBorder(BorderFactory.createCompoundBorder(
+                new RoundedUi.RoundedBorder(18, new Color(0xD5E4F0), 1),
+                BorderFactory.createEmptyBorder(22, 20, 22, 20)));
+        fieldCard.add(fields, BorderLayout.CENTER);
+        content.add(fieldCard, BorderLayout.CENTER);
+
+        JLabel validation = new JLabel(" ");
+        validation.setFont(BODY_FONT);
+        validation.setForeground(new Color(0xA93838));
+        JButton cancel = new RoundedUi.RoundedButton("Cancel", 16, new Color(0x71869B));
+        JButton save = new RoundedUi.RoundedButton(existing == null ? "Add Animal" : "Save Changes", 16,
+                new Color(0x315FAD));
+        cancel.setPreferredSize(new Dimension(128, 42));
+        save.setPreferredSize(new Dimension(145, 42));
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 4));
+        actions.setOpaque(false);
+        actions.add(cancel);
+        actions.add(save);
+        JPanel bottom = new JPanel(new BorderLayout(0, 8));
+        bottom.setOpaque(false);
+        bottom.add(validation, BorderLayout.NORTH);
+        bottom.add(actions, BorderLayout.SOUTH);
+        content.add(bottom, BorderLayout.SOUTH);
+
+        JDialog dialog = new JDialog(this, title, true);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setContentPane(content);
+        dialog.setMinimumSize(new Dimension(560, 510));
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        final Animal[] result = new Animal[1];
+        cancel.addActionListener(e -> dialog.dispose());
+        save.addActionListener(e -> {
+            try {
+                String animalName = name.getText().trim();
+                String animalBreed = breed.getText().trim();
+                if (animalName.isEmpty()) throw new IllegalArgumentException("Pet name is required.");
+                if (animalBreed.isEmpty()) throw new IllegalArgumentException("Breed is required.");
+                int months;
+                try { months = Integer.parseInt(age.getText().trim()); }
+                catch (NumberFormatException ex) { throw new IllegalArgumentException("Age must be a whole number."); }
+                if (months < 0) throw new IllegalArgumentException("Age cannot be negative.");
+                LocalDate date;
+                try { date = LocalDate.parse(intake.getText().trim()); }
+                catch (java.time.format.DateTimeParseException ex) {
+                    throw new IllegalArgumentException("Use yyyy-MM-dd for the intake date.");
+                }
+                if (date.isAfter(LocalDate.now())) {
+                    throw new IllegalArgumentException("Intake date cannot be in the future.");
+                }
+                int id = existing == null ? 0 : existing.getId();
+                result[0] = Animal.create((Species) species.getSelectedItem(), id,
+                        animalName, animalBreed, months, date, (AnimalStatus) status.getSelectedItem());
+                dialog.dispose();
+            } catch (RuntimeException failure) {
+                validation.setText(failure.getMessage() == null ? "Check the form values." : failure.getMessage());
+            }
+        });
+        dialog.getRootPane().setDefaultButton(save);
+        dialog.setVisible(true);
+        return result[0];
+    }
+
+    private static JTextField animalTextField(String initialValue) {
+        JTextField field = new JTextField(initialValue, 18);
+        field.setFont(BODY_FONT);
+        field.setForeground(NAVY_BLUE);
+        field.setBackground(new Color(0xF8FBFF));
+        field.setBorder(BorderFactory.createCompoundBorder(
+                new RoundedUi.RoundedBorder(12, new Color(0xC7DDEE), 1),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)));
+        return field;
+    }
+
+    private static void styleAnimalCombo(JComboBox<?> combo) {
+        combo.setFont(BODY_FONT);
+        combo.setForeground(NAVY_BLUE);
+        combo.setBackground(new Color(0xF8FBFF));
+        combo.setBorder(new RoundedUi.RoundedBorder(12, new Color(0xC7DDEE), 1));
+    }
+
+    private static void addAnimalFormField(JPanel fields, String title, Component editor) {
+        JLabel label = new JLabel(title);
+        label.setFont(LABEL_FONT);
+        label.setForeground(NAVY_BLUE);
+        fields.add(label);
+        fields.add(editor);
     }
 
     // Private helper for MainFrame GUI logic
@@ -1926,10 +2081,9 @@ public final class MainFrame extends JFrame {
         }
         // Bring the image into view even when requested through Tools & Settings.
         selectTab("Animals");
-        if (imagePanel != null && !imagePanel.isVisible()) {
-            imagePanel.setVisible(true);
-            if (samplePreviewToggle != null) samplePreviewToggle.setText("Hide sample image");
-            imagePanel.revalidate();
+        if (samplePreviewContainer != null && !samplePreviewContainer.isVisible()) {
+            samplePreviewContainer.setVisible(true);
+            samplePreviewContainer.revalidate();
         }
         var service = PetImageServiceFactory.forSpecies(animal.species());
         statusLabel.setText("Fetching image from " + service.providerName() + "...");

@@ -36,7 +36,7 @@ public final class ImportController {
         auth.requireStaff();
         busy = true;
         status = "Importing...";
-        SwingWorker<CsvImportResult, Void> worker = new SwingWorker<>() {
+        SwingWorker<CsvImportResult, Integer> worker = new SwingWorker<>() {
             @Override
             protected CsvImportResult doInBackground() throws Exception {
                 CsvImportService service = new CsvImportService(database, classification);
@@ -45,7 +45,7 @@ public final class ImportController {
                     public void onProgress(int processed, int total) {
                         if (onProgress != null) {
                             int percent = total > 0 ? (int) (processed * 100.0 / total) : 0;
-                            onProgress.accept(percent);
+                            publish(percent);
                         }
                     }
 
@@ -53,6 +53,13 @@ public final class ImportController {
                     public void onFinished(CsvImportResult result) {
                     }
                 });
+            }
+
+            @Override
+            protected void process(java.util.List<Integer> updates) {
+                if (onProgress != null && !updates.isEmpty()) {
+                    onProgress.accept(updates.get(updates.size() - 1));
+                }
             }
 
             @Override
