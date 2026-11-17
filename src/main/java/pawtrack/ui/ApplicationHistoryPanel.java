@@ -18,11 +18,16 @@ import java.util.Objects;
 
 /** Read-only, staff-only presentation of the existing SQLite reservation history. */
 public final class ApplicationHistoryPanel extends JPanel {
-    private static final Color NAVY = new Color(0x193662);
-    private static final Color BLUE = new Color(0x326FCB);
-    private static final Color MUTED = new Color(0x60779B);
-    private static final Color CANVAS = new Color(0xF1F6FE);
-    private static final Color BORDER = new Color(0xD8E5FA);
+    @Override protected void paintComponent(java.awt.Graphics graphics) {
+        super.paintComponent(graphics);
+        PawTrackBackdrop.paint(graphics, this);
+    }
+
+    private static final Color NAVY = PawTrackTheme.NAVY;
+    private static final Color BLUE = PawTrackTheme.BLUE;
+    private static final Color MUTED = PawTrackTheme.MUTED;
+    private static final Color CANVAS = PawTrackTheme.CANVAS;
+    private static final Color BORDER = PawTrackTheme.LINE;
     private static final Font REGULAR = new Font("Segoe UI", Font.PLAIN, 12);
     private static final Font SEMIBOLD = new Font("Segoe UI", Font.BOLD, 12);
 
@@ -102,7 +107,7 @@ public final class ApplicationHistoryPanel extends JPanel {
             @Override protected void paintComponent(Graphics graphics) {
                 Graphics2D g = (Graphics2D) graphics.create();
                 g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g.setPaint(new GradientPaint(0, 0, new Color(0x193B76), getWidth(), getHeight(), new Color(0x458CE6)));
+                g.setPaint(new GradientPaint(0, 0, PawTrackTheme.HERO_START, getWidth(), getHeight(), PawTrackTheme.HERO_END));
                 g.fillRoundRect(0, 0, getWidth(), getHeight(), 24, 24);
                 g.setColor(new Color(255, 255, 255, 21));
                 g.fillOval(getWidth() - 260, -100, 310, 200);
