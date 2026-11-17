@@ -106,9 +106,13 @@ public final class AnimalController {
         requireStaff();
         boolean updated = animalDao.updateDetails(animal.getId(), animal.getName(), animal.getBreed(),
                 animal.getAgeMonths(), animal.getIntakeDate());
+        if (!updated) {
+            setStatus("Animal not found");
+            return false;
+        }
         animalDao.updateStatus(animal.getId(), animal.getStatus());
         refresh();
-        return updated;
+        return true;
     }
 
     /** Deletes an animal by id and refreshes the in-memory list. */
