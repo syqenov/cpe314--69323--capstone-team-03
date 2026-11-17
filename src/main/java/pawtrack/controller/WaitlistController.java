@@ -90,6 +90,7 @@ public final class WaitlistController {
     }
 
     public Optional<Adopter> pollNext(int animalId) throws SQLException {
+        if (auth != null) auth.requireStaff();
         Optional<Adopter> next = waitlist.peekNext(animalId);
         if (next.isEmpty()) {
             return Optional.empty();
