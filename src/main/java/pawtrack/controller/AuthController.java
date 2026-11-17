@@ -103,18 +103,22 @@ public final class AuthController {
         if (username == null || username.isBlank()) {
             throw new IllegalArgumentException("Username is required.");
         }
+        final String cleanName = username.trim();
         PasswordPolicy.validate(password);
         try {
-            if (userDao.findByUsername(username).isPresent()) {
+            if (userDao.existsIgnoreCase(cleanName)) {
                 throw new IllegalArgumentException("Username already exists.");
             }
             String salt = PasswordHasher.generateSalt();
             String hash = PasswordHasher.hash(password, salt);
-            User user = new User(null, username.trim(), hash, salt, Role.ADOPTER, null);
+            User user = new User(null, cleanName, hash, salt, Role.ADOPTER, null);
             User created = userDao.createLinkedAdopter(user);
             LOGGER.info("Created new adopter account: " + user.getUsername());
             return created;
         } catch (SQLException e) {
+            if (e.getMessage() != null && e.getMessage().contains("UNIQUE constraint")) {
+                throw new IllegalArgumentException("Username already exists.", e);
+            }
             LOGGER.log(Level.SEVERE, "Account creation failed", e);
             throw new IllegalStateException("Could not create account", e);
         }

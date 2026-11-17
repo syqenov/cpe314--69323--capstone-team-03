@@ -33,6 +33,26 @@ public final class UserDao {
         return Optional.empty();
     }
 
+    /** Case-insensitive, whitespace-trimmed username check used to block duplicate accounts. */
+    public boolean existsIgnoreCase(String username) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT 1 FROM users WHERE lower(username) = lower(?)")) {
+            ps.setString(1, username == null ? "" : username.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    /** Adopter accounts whose adopter_id is missing or does not reference an adopter row. */
+    public int countInvalidAdopterLinks() throws SQLException {
+        String sql = "SELECT COUNT(*) FROM users u WHERE u.role = 'ADOPTER' AND "
+                + "(u.adopter_id IS NULL OR NOT EXISTS (SELECT 1 FROM adopter a WHERE a.id = u.adopter_id))";
+        try (Statement st = connection.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            return rs.next() ? rs.getInt(1) : 0;
+        }
+    }
+
     public int create(User user) throws SQLException {
         String sql = "INSERT INTO users (username, password_hash, password_salt, role, adopter_id) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -124,11 +144,12 @@ public final class UserDao {
         // The account ID prevents clashes and protects preexisting shelter contacts.
         String email = "account-" + userId + "@pawtrack.invalid";
         try (PreparedStatement ps = connection.prepareStatement(
-                "INSERT INTO adopter (name, email, phone) VALUES (?, ?, ?)",
+                "INSERT INTO adopter (name, email, phone, created_at) VALUES (?, ?, ?, ?)",
                 Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, username);
             ps.setString(2, email);
             ps.setString(3, "");
+            ps.setString(4, java.time.LocalDate.now().toString());
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {

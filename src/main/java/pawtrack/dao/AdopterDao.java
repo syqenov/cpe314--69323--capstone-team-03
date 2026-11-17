@@ -23,11 +23,12 @@ public final class AdopterDao {
     }
 
     public int insert(Adopter adopter) throws SQLException {
-        String sql = "INSERT INTO adopter (name, email, phone) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO adopter (name, email, phone, created_at) VALUES (?, ?, ?, ?)";
         try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, adopter.getName());
             ps.setString(2, adopter.getEmail());
             ps.setString(3, adopter.getPhone());
+            ps.setString(4, adopter.getCreatedAt().toString());
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -116,6 +117,18 @@ public final class AdopterDao {
                 rs.getInt("id"),
                 rs.getString("name"),
                 rs.getString("email"),
-                rs.getString("phone"));
+                rs.getString("phone"),
+                parseStoredDate(rs.getString("created_at")));
+    }
+
+    private static java.time.LocalDate parseStoredDate(String value) {
+        if (value != null && value.length() >= 10) {
+            try {
+                return java.time.LocalDate.parse(value.substring(0, 10));
+            } catch (java.time.format.DateTimeParseException invalid) {
+                // fall through
+            }
+        }
+        return java.time.LocalDate.now();
     }
 }
