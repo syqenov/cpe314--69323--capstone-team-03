@@ -115,6 +115,16 @@ public final class AnimalController {
         return true;
     }
 
+    /** Staff-only: changes how the animal came to the shelter (e.g. stray, surrender). */
+    public boolean updateAnimalSource(int animalId, String source) throws SQLException {
+        requireStaff();
+        boolean updated = animalDao.updateSource(animalId, source);
+        if (updated) {
+            refresh();
+        }
+        return updated;
+    }
+
     /** Deletes an animal by id and refreshes the in-memory list. */
     public boolean deleteAnimal(int id) throws SQLException {
         requireStaff();

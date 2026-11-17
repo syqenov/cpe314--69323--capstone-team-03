@@ -30,6 +30,11 @@ import java.util.regex.Pattern;
  * - Status pills: green = available, amber = pending, grey = adopted.
  */
 public final class AnimalBrowsePanel extends JPanel {
+    @Override protected void paintComponent(java.awt.Graphics graphics) {
+        super.paintComponent(graphics);
+        PawTrackBackdrop.paint(graphics, this);
+    }
+
     private static final int PAGE_SIZE = 9;           // 3 x 3 grid
     private static final int CARD_IMG_W = 300, CARD_IMG_H = 150;
     private static final int PROFILE_IMG_W = 210, PROFILE_IMG_H = 190;
@@ -210,7 +215,11 @@ public final class AnimalBrowsePanel extends JPanel {
             updateProfile();
         }));
         table.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) updateProfile();
+            if (!e.getValueIsAdjusting()) {
+                updateProfile();
+                // Paint the selected card immediately, without rebuilding or reloading images.
+                galleryGrid.repaint();
+            }
         });
 
         // Show adoptable pets initially. Until the user selects a status,
@@ -302,7 +311,25 @@ public final class AnimalBrowsePanel extends JPanel {
         String breed = Objects.toString(table.getValueAt(row, 3), "");
         String state = Objects.toString(table.getValueAt(row, 6), "");
 
-        JPanel card = PremiumUi.card(new BorderLayout(0, 8));
+        // Selected-card appearance is derived from JTable selection, so the
+        // gallery and table always agree without maintaining a second selection.
+        JPanel card = new JPanel(new BorderLayout(0, 8)) {
+            @Override protected void paintComponent(Graphics graphics) {
+                Graphics2D g = (Graphics2D) graphics.create();
+                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                boolean selected = isGalleryCardSelected(id);
+                g.setColor(new Color(36, 82, 150, 18));
+                g.fillRoundRect(3, 5, Math.max(0, getWidth() - 7), Math.max(0, getHeight() - 8), 25, 25);
+                g.setColor(selected ? new Color(0xE8F2FF) : Color.WHITE);
+                g.fillRoundRect(1, 1, Math.max(0, getWidth() - 7), Math.max(0, getHeight() - 9), 24, 24);
+                g.setColor(selected ? new Color(0x2867C5) : PremiumUi.LINE);
+                g.setStroke(new BasicStroke(selected ? 3f : 1f));
+                g.drawRoundRect(2, 2, Math.max(0, getWidth() - 9), Math.max(0, getHeight() - 11), 23, 23);
+                g.dispose();
+                super.paintComponent(graphics);
+            }
+        };
+        card.setOpaque(false);
         card.setBorder(new EmptyBorder(10, 10, 12, 10));
         card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
@@ -330,6 +357,13 @@ public final class AnimalBrowsePanel extends JPanel {
         };
         attachSelection(card, select);
         return card;
+    }
+
+    private boolean isGalleryCardSelected(int animalId) {
+        int selectedRow = table.getSelectedRow();
+        if (selectedRow < 0 || selectedRow >= table.getRowCount()) return false;
+        Object selectedId = table.getValueAt(selectedRow, 0);
+        return selectedId instanceof Number number && number.intValue() == animalId;
     }
 
     private static void attachSelection(Component component, java.awt.event.MouseListener listener) {

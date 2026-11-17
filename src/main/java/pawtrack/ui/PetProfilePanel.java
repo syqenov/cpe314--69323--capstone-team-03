@@ -6,6 +6,10 @@ import pawtrack.model.Species;
 import pawtrack.service.PetPhotoStore;
 
 import javax.swing.*;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.InputStream;
+import java.nio.file.Files;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.Objects;
@@ -138,9 +142,12 @@ public final class PetProfilePanel extends JPanel {
         if (index < 0 || index >= gallery.size()) return;
         galleryIndex = index;
         try {
-            ImageIcon original = new ImageIcon(gallery.get(index).toString());
-            if (original.getIconWidth() <= 0) throw new IOException("Unreadable photo");
-            Image scaled = original.getImage().getScaledInstance(240, 225, Image.SCALE_SMOOTH);
+            BufferedImage original;
+            try (InputStream stream = Files.newInputStream(gallery.get(index))) {
+                original = ImageIO.read(stream);
+            }
+            if (original == null) throw new IOException("Unreadable photo");
+            Image scaled = original.getScaledInstance(240, 225, Image.SCALE_SMOOTH);
             image.setIcon(new ImageIcon(scaled));
             image.setText("");
             imageStatus.setText("Actual pet photo " + (index + 1) + " of " + gallery.size());
