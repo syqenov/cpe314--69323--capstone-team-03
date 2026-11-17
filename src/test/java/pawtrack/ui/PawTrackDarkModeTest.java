@@ -45,19 +45,34 @@ class PawTrackDarkModeTest {
         });
     }
 
-    @Test void roundedCardsPaintDarkAndReturnToWhiteWithoutRecreation() throws Exception {
+    @Test void roundedCardsPaintDarkAndRestoreLightSurfaceWithoutRecreation() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
             JPanel card = PremiumUi.card(new BorderLayout());
             card.setSize(240, 140);
+            // The approved light card surface is #F8FBFF, not pure white.
+            // Test both directions on the SAME component to catch stale paints.
             PawTrackTheme.setDark(false);
-            BufferedImage light = new BufferedImage(240, 140, BufferedImage.TYPE_INT_ARGB);
-            card.paint(light.getGraphics());
+            BufferedImage light = paint(card);
+            assertEquals(PawTrackTheme.SURFACE.getRGB(), light.getRGB(30, 30));
+
             PawTrackTheme.setDark(true);
-            BufferedImage dark = new BufferedImage(240, 140, BufferedImage.TYPE_INT_ARGB);
-            card.paint(dark.getGraphics());
-            assertEquals(Color.WHITE.getRGB(), light.getRGB(30, 30));
+            BufferedImage dark = paint(card);
             assertEquals(PawTrackTheme.DARK_SURFACE.getRGB(), dark.getRGB(30, 30));
+
+            PawTrackTheme.setDark(false);
+            BufferedImage restored = paint(card);
+            assertEquals(PawTrackTheme.SURFACE.getRGB(), restored.getRGB(30, 30));
+            assertEquals(light.getRGB(30, 30), restored.getRGB(30, 30));
         });
+    }
+
+    private static BufferedImage paint(JPanel panel) {
+        BufferedImage image = new BufferedImage(panel.getWidth(), panel.getHeight(),
+                BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try { panel.paint(graphics); }
+        finally { graphics.dispose(); }
+        return image;
     }
 
     @Test void headerIncludesLiveThemeControl() throws Exception {

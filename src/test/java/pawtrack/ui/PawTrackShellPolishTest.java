@@ -33,9 +33,37 @@ class PawTrackShellPolishTest {
         PawTrackHeader staff = new PawTrackHeader("STAFF", clicks::incrementAndGet);
         JPanel adopterActions = (JPanel) ((BorderLayout) adopter.getLayout()).getLayoutComponent(BorderLayout.EAST);
         JPanel staffActions = (JPanel) ((BorderLayout) staff.getLayout()).getLayoutComponent(BorderLayout.EAST);
-        assertEquals(2, adopterActions.getComponentCount());
-        assertEquals(1, staffActions.getComponentCount());
-        ((JButton) adopterActions.getComponent(0)).doClick();
+        // Both roles now show the global Dark/Light theme button. Notifications
+        // must remain available ONLY for adopters, independent of button order.
+        JButton notification = findNotificationButton(adopterActions);
+        assertNotNull(notification);
+        assertNull(findNotificationButton(staffActions));
+        assertNotNull(findByName(adopterActions, "globalThemeToggle"));
+        assertNotNull(findByName(staffActions, "globalThemeToggle"));
+        notification.doClick();
         assertEquals(1, clicks.get());
+    }
+    private static JButton findNotificationButton(Container parent) {
+        for (Component child : parent.getComponents()) {
+            if (child instanceof JButton button && button.getText().startsWith("Notifications")) {
+                return button;
+            }
+            if (child instanceof Container container) {
+                JButton found = findNotificationButton(container);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static JButton findByName(Container parent, String name) {
+        for (Component child : parent.getComponents()) {
+            if (child instanceof JButton button && name.equals(button.getName())) return button;
+            if (child instanceof Container container) {
+                JButton found = findByName(container, name);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 }
