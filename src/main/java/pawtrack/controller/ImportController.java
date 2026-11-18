@@ -8,6 +8,7 @@ import pawtrack.service.ImportListener;
 
 import javax.swing.SwingWorker;
 import java.nio.file.Path;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
@@ -17,6 +18,7 @@ public final class ImportController {
     private final ClassificationService classification;
     private final AuthController auth;
     private final AtomicBoolean busy = new AtomicBoolean(false);
+    private final AtomicBoolean cancelRequested = new AtomicBoolean(false);
     private String status = "";
 
     public ImportController(Database database, ClassificationService classification, AuthController auth) {
@@ -29,6 +31,20 @@ public final class ImportController {
         return busy.get();
     }
 
+    /**
+     * Asks the running import to stop. The import is rolled back, so nothing from it is saved.
+     *
+     * @return false when no import is running
+     */
+    public boolean cancel() {
+        if (!busy.get()) {
+            return false;
+        }
+        cancelRequested.set(true);
+        status = "Cancelling...";
+        return true;
+    }
+
     public String getStatus() {
         return status;
     }
@@ -38,6 +54,7 @@ public final class ImportController {
         if (!busy.compareAndSet(false, true)) {
             throw new IllegalStateException("A CSV import is already in progress");
         }
+        cancelRequested.set(false);
         status = "Importing...";
         SwingWorker<CsvImportResult, Integer> worker = new SwingWorker<>() {
             @Override
@@ -54,6 +71,11 @@ public final class ImportController {
 
                     @Override
                     public void onFinished(CsvImportResult result) {
+                    }
+
+                    @Override
+                    public boolean isCancelled() {
+                        return cancelRequested.get();
                     }
                 });
             }
@@ -75,9 +97,17 @@ public final class ImportController {
                         onDone.accept(result);
                     }
                 } catch (Exception e) {
-                    status = "Failed";
-                    if (onError != null) {
-                        onError.accept(e);
+                    Throwable cause = e.getCause() == null ? e : e.getCause();
+                    if (cause instanceof CancellationException) {
+                        status = "Cancelled";
+                        if (onError != null) {
+                            onError.accept(new CancellationException("Import cancelled. Nothing was saved."));
+                        }
+                    } else {
+                        status = "Failed";
+                        if (onError != null) {
+                            onError.accept(e);
+                        }
                     }
                 }
             }

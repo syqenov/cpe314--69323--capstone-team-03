@@ -120,6 +120,9 @@ public final class CsvImportService {
             int processed = 0;
 
             while ((line = reader.readLine()) != null) {
+                if (progress.isCancelled()) {
+                    throw new java.util.concurrent.CancellationException("Import cancelled");
+                }
                 processed++;
                 if (line.isBlank()) {
                     continue;

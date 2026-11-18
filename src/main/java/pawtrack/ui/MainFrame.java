@@ -160,6 +160,7 @@ public final class MainFrame extends JFrame {
     private Runnable onLogout;
     // Private helper for MainFrame GUI logic
     private final JProgressBar progressBar = new JProgressBar(0, 100);
+    private JButton importToolbarButton;
     // Private helper for MainFrame GUI logic
     private final JLabel statusLabel = new JLabel("Ready");
     private final AnimalStatusFilter statusFilter = new AnimalStatusFilter(animalTable, statusLabel, PRIMARY_BLUE);
@@ -508,7 +509,8 @@ public final class MainFrame extends JFrame {
         toolbar.add(button("Filter by Classification", this::onFilterByClassification, "Focus the classification filter (Ctrl+F)"));
         toolbar.add(Box.createVerticalStrut(16));
         if (user.getRole() == Role.STAFF) {
-            toolbar.add(button("Import Intake History (CSV)", this::onImportCsv, "Import animals from CSV file (Ctrl+I)"));
+            importToolbarButton = button("Import Intake History (CSV)", this::onImportCsv, "Import animals from CSV file (Ctrl+I)");
+            toolbar.add(importToolbarButton);
             toolbar.add(Box.createVerticalStrut(16));
             toolbar.add(button("Add Animal", this::onAddAnimal, "Add a new animal to the shelter"));
             toolbar.add(Box.createVerticalStrut(16));
@@ -1054,14 +1056,29 @@ public final class MainFrame extends JFrame {
     }
 
     private void checkConnection() {
-        try {
-            database.connection().isValid(2);
-            connectionStatusLabel.setText("● Connected");
-            connectionStatusLabel.setForeground(new Color(0x27AE60));
-        } catch (Exception e) {
-            connectionStatusLabel.setText("● Disconnected");
-            connectionStatusLabel.setForeground(new Color(0xE74C3C));
-        }
+        // isValid() talks to the database, so it runs off the EDT.
+        new SwingWorker<Boolean, Void>() {
+            @Override
+            protected Boolean doInBackground() {
+                try {
+                    return database.connection().isValid(2);
+                } catch (Exception e) {
+                    return Boolean.FALSE;
+                }
+            }
+
+            @Override
+            protected void done() {
+                boolean connected;
+                try {
+                    connected = Boolean.TRUE.equals(get());
+                } catch (Exception e) {
+                    connected = false;
+                }
+                connectionStatusLabel.setText(connected ? "\u25CF Connected" : "\u25CF Disconnected");
+                connectionStatusLabel.setForeground(connected ? new Color(0x27AE60) : new Color(0xE74C3C));
+            }
+        }.execute();
     }
 
     /** Displays the identity and role of the account that completed login. */
@@ -1198,6 +1215,16 @@ public final class MainFrame extends JFrame {
             warn("This action is available to shelter staff only.");
             return;
         }
+        if (importController.isBusy()) {
+            int choice = javax.swing.JOptionPane.showConfirmDialog(this,
+                    "An import is already running.\nCancel it? Nothing from this import will be saved.",
+                    "Import in progress", javax.swing.JOptionPane.YES_NO_OPTION,
+                    javax.swing.JOptionPane.QUESTION_MESSAGE);
+            if (choice == javax.swing.JOptionPane.YES_OPTION && importController.cancel()) {
+                statusLabel.setText("Cancelling import...");
+            }
+            return;
+        }
         JFileChooser chooser = new JFileChooser(new File("data"));
         chooser.setDialogTitle("Select historical intake/adoption CSV");
         chooser.setFileFilter(new FileNameExtensionFilter("CSV files", "csv"));
@@ -1213,25 +1240,71 @@ public final class MainFrame extends JFrame {
         progressBar.setString("Importing...");
         statusLabel.setText("Importing " + path.getFileName() + " on a background thread...");
         spinner.start();
+        setImportRunning(true);
 
-        importController.importCsv(path,
-                value -> {
-                    progressBar.setValue(value);
-                    progressBar.setString(value + "%");
-                },
-                result -> {
-                    spinner.stop();
-                    progressBar.setString("Done");
-                    statusLabel.setText(result.summary());
-                    log("Import finished: " + result.summary());
-                    refreshAnimals();
-                    refreshAnalytics();
-                },
-                failure -> {
-                    spinner.stop();
-                    progressBar.setString("Failed");
-                    error("Import failed", failure);
-                });
+        try {
+            importController.importCsv(path,
+                    value -> {
+                        progressBar.setValue(value);
+                        progressBar.setString(value + "%");
+                    },
+                    result -> {
+                        spinner.stop();
+                        setImportRunning(false);
+                        progressBar.setString("Done");
+                        statusLabel.setText(result.summary());
+                        log("Import finished: " + result.summary());
+                        refreshAllAsync();
+                    },
+                    failure -> {
+                        spinner.stop();
+                        setImportRunning(false);
+                        if (failure instanceof java.util.concurrent.CancellationException) {
+                            progressBar.setValue(0);
+                            progressBar.setString("Cancelled");
+                            statusLabel.setText("Import cancelled. Nothing was saved.");
+                            log("Import cancelled");
+                            return;
+                        }
+                        progressBar.setString("Failed");
+                        error("Import failed", failure);
+                    });
+        } catch (IllegalStateException | pawtrack.controller.UnauthorizedException refused) {
+            spinner.stop();
+            setImportRunning(false);
+            progressBar.setString("");
+            warn(refused.getMessage());
+        }
+    }
+
+    /** The toolbar import button doubles as a Cancel button while an import runs. */
+    private void setImportRunning(boolean running) {
+        if (importToolbarButton != null) {
+            importToolbarButton.setText(running ? "Cancel Import" : "Import Intake History (CSV)");
+        }
+    }
+
+    /** Reloads animals and analytics without blocking the EDT (used after a large import). */
+    private void refreshAllAsync() {
+        animalController.refreshAsync(() -> {
+            tableModel.setAnimals(animalController.getAnimals());
+            new SwingWorker<AnalyticsController.AnalyticsSnapshot, Void>() {
+                @Override
+                protected AnalyticsController.AnalyticsSnapshot doInBackground() {
+                    return analyticsController.compute();
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        AnalyticsController.AnalyticsSnapshot snapshot = get();
+                        analyticsPanel.showReport(snapshot.report(), snapshot.classCounts(), snapshot.totalWaiters());
+                    } catch (Exception e) {
+                        LOGGER.log(java.util.logging.Level.WARNING, "Could not refresh analytics", e);
+                    }
+                }
+            }.execute();
+        });
     }
 
     // Private helper for MainFrame GUI logic

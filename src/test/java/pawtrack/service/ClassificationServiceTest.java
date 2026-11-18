@@ -12,6 +12,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -104,5 +105,40 @@ class ClassificationServiceTest {
         assertEquals(4, rebuilt.nodeCount());
         assertEquals("Root > Dog > Retriever > Golden Retriever",
                 rebuilt.findByPath("Root > Dog > Retriever > Golden Retriever").orElseThrow().path());
+    }
+
+    @Test
+    @DisplayName("Rows whose parents form a cycle are rejected (edge case)")
+    void cycleRejected() {
+        List<ClassificationDao.Row> rows = List.of(
+                new ClassificationDao.Row(1, "Root", null),
+                new ClassificationDao.Row(2, "A", 3),
+                new ClassificationDao.Row(3, "B", 2));
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> ClassificationService.fromRows(rows));
+        assertTrue(failure.getMessage().contains("cycle"));
+    }
+
+    @Test
+    @DisplayName("A node that is its own parent is rejected (edge case)")
+    void selfParentRejected() {
+        List<ClassificationDao.Row> rows = List.of(
+                new ClassificationDao.Row(1, "Root", null),
+                new ClassificationDao.Row(2, "Loop", 2));
+
+        assertThrows(IllegalStateException.class, () -> ClassificationService.fromRows(rows));
+    }
+
+    @Test
+    @DisplayName("A node whose parent id does not exist is rejected (edge case)")
+    void missingParentRejected() {
+        List<ClassificationDao.Row> rows = List.of(
+                new ClassificationDao.Row(1, "Root", null),
+                new ClassificationDao.Row(2, "Orphan", 99));
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> ClassificationService.fromRows(rows));
+        assertTrue(failure.getMessage().contains("Missing parent"));
     }
 }

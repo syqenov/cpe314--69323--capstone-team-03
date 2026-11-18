@@ -13,6 +13,11 @@ public interface ImportListener {
 
     void onFinished(CsvImportResult result);
 
+    /** Polled by the importer for every line; returning true rolls the whole import back. */
+    default boolean isCancelled() {
+        return false;
+    }
+
     /** No-op listener for tests and headless usage. */
     ImportListener NONE = new ImportListener() {
         @Override

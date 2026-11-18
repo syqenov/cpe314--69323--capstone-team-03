@@ -67,6 +67,11 @@ public final class AnimalController {
     }
 
     public void refreshAsync() {
+        refreshAsync(null);
+    }
+
+    /** Loads animals off the EDT, then runs {@code afterOnEdt} (if any) on the EDT once they are in memory. */
+    public void refreshAsync(Runnable afterOnEdt) {
         new SwingWorker<List<Animal>, Void>() {
             @Override
             protected List<Animal> doInBackground() throws Exception {
@@ -79,6 +84,9 @@ public final class AnimalController {
                     animals = get();
                     notifyChange();
                     setStatus("Loaded " + animals.size() + " animal(s)");
+                    if (afterOnEdt != null) {
+                        afterOnEdt.run();
+                    }
                 } catch (Exception e) {
                     LOGGER.log(Level.SEVERE, "Failed to load animals", e);
                     setStatus("Error loading animals: " + e.getMessage());
