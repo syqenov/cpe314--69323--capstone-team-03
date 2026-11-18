@@ -12,11 +12,10 @@
 | | Cleint Lausa — Developer |
 | **Instructor:** | Richyll Son |
 | **Term:** | First Semester, S.Y. 2026–2027 |
-| **Document Version / Date:** | **V 0.4 — 11/17/2026** |
+| **Document Version / Date:** | **V 0.5 — 11/18/2026** |
 
 <br>
 
-# Table of Contents
 # Table of Contents
 
 - [Revision History](#revision-history)
@@ -45,6 +44,20 @@
   - [7.1 Data Mining and Aggregation](#71-data-mining-and-aggregation)
   - [7.2 Recursive Classification Analysis](#72-recursive-classification-analysis)
   - [7.3 Data Visualization](#73-data-visualization)
+- [8. Testing Summary](#8-testing-summary)
+  - [8.1 Test Suite Overview](#81-test-suite-overview)
+  - [8.2 Test Classes and Edge Cases](#82-test-classes-and-edge-cases)
+  - [8.3 Test Results and Quality Assessment](#83-test-results-and-quality-assessment)
+- [9. Individual Contributions](#9-individual-contributions)
+  - [9.1 Team Member Contributions](#91-team-member-contributions)
+  - [9.2 Git Repository Contributions](#92-git-repository-contributions)
+  - [9.3 Team Collaboration and Integration](#93-team-collaboration-and-integration)
+- [Appendix](#appendix)
+  - [Appendix A. Build and Run Instructions](#appendix-a-build-and-run-instructions)
+  - [Appendix B. Automated Testing Instructions](#appendix-b-automated-testing-instructions)
+  - [Appendix C. Known Issues and Limitations](#appendix-c-known-issues-and-limitations)
+  - [Appendix D. Supporting Materials](#appendix-d-supporting-materials)
+
 
    <br>
 ## Revision History
@@ -71,6 +84,8 @@
 | | | Aeisha Mae Elizar | Updated ERD and SQLite schema. |
 | | | Cleint Lausa | Revised concurrency and analytics sections. |
 | | | Kyle Cheznie Taghoy | Updated API integration, response examples, and error handling. |
+| **0.5** | **Nov. 18, 2026** | Kyle Cheznie Taghoy | Updated Section 8 with automated test results, test classes, and edge cases. |
+| | | Sofia Yvonne Enovero | Updated Section 9 with individual contributions and Git commit records. Finalized the document version, contents, and formatting. |
 
 <br>
 
@@ -84,7 +99,6 @@ The application is developed using Java 17-compatible code, Swing, SQLite/JDBC, 
 
 <br>
 
-## 2. Preliminary ER Sketch & Team Roles
 ## 2. Preliminary ER Sketch & Team Roles
 
 ### 2.1 Preliminary Entities and Key Attributes
@@ -365,9 +379,9 @@ PawTrack uses Java Swing's `SwingWorker` to perform long-running operations on b
 
 | Operation | Background Worker | Threading Approach |
 |---|---|---|
-| Bulk CSV Import | `SwingWorker` coordinated by `ImportController` | The background task calls `CsvImportService` to read, validate, and import CSV records into SQLite. Progress is reported during processing, while completion and error notifications are handled on the EDT. |
+| Bulk CSV Import | `SwingWorker` coordinated by `ImportController` | A second import cannot start while one is running. The import button becomes Cancel Import, and cancelling rolls the whole import back so no partial data is saved. |
 | Pet Image Retrieval | `ImageWorker` | The `doInBackground()` method requests an image URL through `PetImageService`, downloads the image, and processes it outside the EDT. The resulting image is displayed after the worker completes. |
-| Analytics Refresh | None for direct analytics refresh; dashboard refresh uses `SwingWorker`. | Direct analytics refresh calls `AnalyticsController.compute()` synchronously, normally on the EDT. Dashboard statistics are also calculated through a separate background `SwingWorker`. Further improvement may be needed to ensure all analytics refresh operations remain responsive. |
+| Analytics Refresh | None for direct analytics refresh; dashboard refresh uses `SwingWorker`. | SwingWorker after CSV import and for the connection check; other refreshes are still synchronous. After a CSV import, animals are reloaded through AnimalController.refreshAsync() and analytics through a SwingWorker. Refreshes after other actions (add, edit, adopt) still call AnalyticsController.compute() synchronously on the EDT. Moving them to background workers is planned future work. |
 
 ![PawTrack Concurrency Workflow](./concurrency-workflow.png)
 
@@ -375,7 +389,7 @@ PawTrack uses Java Swing's `SwingWorker` to perform long-running operations on b
 
 ### 6.2 How the Background Work Runs
 
-For CSV importing, a background worker executes the import process without blocking the graphical interface. `CsvImportService` processes the records, validates their contents, and performs the required database operations. Progress information is reported during execution, and the completion handler retrieves the result and updates the interface on the EDT.
+For CSV importing, a background worker executes the import process without blocking the graphical interface. `CsvImportService` processes the records, validates their contents, and performs the required database operations. Progress information is reported during execution, and the completion handler retrieves the result and updates the interface on the EDT. The import checks a cancellation flag on every line and rolls back its transaction if it is cancelled.
 
 For pet image retrieval, `ImageWorker` performs the external API request and downloads the image on a background thread. After the operation completes, the application updates the corresponding image display and status information. This separation prevents network delays from directly blocking the interface.
 
@@ -429,3 +443,178 @@ PawTrack presents its aggregated analytics using bar charts rendered by `BarChar
 
 *Figure 7.1. Data Mining and Visualization Workflow of PawTrack. The diagram illustrates how animal and adoption records are processed by AnalyticsService and presented through the analytics dashboard.*
 
+## 8. Testing Summary
+
+### 8.1 Test Suite Overview
+
+PawTrack uses JUnit 5 for automated testing and Mockito for mocking dependencies where appropriate. The test suite covers domain models, controllers, database operations, business services, API response parsing, and graphical user interface components.
+
+Tests verify animal management, authentication, adoption transactions, waitlist operations, reservations, database persistence, CSV processing, analytics, and interface behavior. Edge cases include invalid input, duplicate records, unauthorized operations, missing data, and concurrency conflicts.
+
+The automated tests were executed using Maven on [DATE]. All 272 tests across 62 test classes passed successfully.
+
+**Table 20. Automated Test Execution Summary**
+
+| Metric | Result |
+|---|---|
+| Testing Framework | JUnit 5 |
+| Mocking Framework | Mockito |
+| Test Classes Executed | 62 |
+| Total Tests | 272 |
+| Passed | 272 |
+| Failures | 0 |
+| Errors | 0 |
+| Skipped | 0 |
+| Test Command | `mvn.cmd test` |
+| Execution Date | [DATE] |
+| Build Result | BUILD SUCCESS |
+
+### 8.2 Test Classes and Edge Cases
+
+The automated test suite covers PawTrack's API integration, controllers, database persistence, domain models, business services, and graphical user interface. The following tables summarize the test classes and representative scenarios identified from the test methods.
+
+The edge cases include invalid input, unauthorized access, duplicate records, database conflicts, missing records, empty data, interrupted operations, and interface-state changes. These cases help verify system reliability beyond normal operations.
+
+**Table 21. API, Controller, and Database Tests**
+
+| Test Class | Functionality Tested | Representative Edge Case |
+|---|---|---|
+| PetApiParsingTest | Dog CEO and TheCatAPI response parsing, breed catalogues, and provider capabilities | API error status and empty cat API response |
+| AdopterIdentityTest | Authenticated adopter identity across waitlists and applications | Prevents using another adopter's identity or creating orphaned accounts |
+| AdopterOwnershipTest | Account ownership and record access | Prevents adopters from accessing another person's adoption records |
+| AdoptionTransactionTest | Atomic adoption completion and animal status updates | Duplicate adoption attempts and transaction rollback after failure |
+| AnimalControllerAuthorizationTest | Permission checks for animal creation, updates, and deletion | Unauthenticated or adopter accounts cannot perform restricted operations |
+| AnimalControllerMissingAnimalTest | Animal update handling | Editing an animal that no longer exists must not insert or modify records |
+| AuthControllerTest | Login, registration, password validation, and access control | Invalid credentials, duplicate usernames, and weak passwords |
+| ImportControllerCancelTest | Cancellation of a running CSV import | Cancel does nothing when no import is running |
+| PawTrackWiringTest | Secure controller initialization and dependency wiring | Controllers require an authenticated session |
+| WaitlistAuthorizationTest | Waitlist access restrictions | Adopters cannot perform staff-only waitlist polling |
+| WaitlistControllerPersistenceTest | Persistent FIFO waitlist operations | Duplicate interest preserves the original queue position |
+| DatabaseSchemaTest | Database schema creation and migration | Existing records and credentials survive repeated initialization |
+| PersistenceTest | Animal, adoption, classification, and adopter persistence | Foreign-key and unique-email constraints |
+| Phase1PersistenceTest | New animal/adopter fields and legacy database migration | Older databases are migrated without losing records |
+| UserDaoTest | User creation and username lookup | Searching for an unknown user returns an empty result |
+| DtoParsingTest | Dog and cat API DTO parsing | API error payloads and empty cat response arrays |
+
+**Table 22. Model and Business Service Tests**
+
+| Test Class | Functionality Tested | Representative Edge Case |
+|---|---|---|
+| AdopterTest | Adopter identity and field validation | Blank required fields and different email identities |
+| AnimalHierarchyTest | Animal inheritance, fees, age boundaries, and factory behavior | Invalid animal input and adoption-fee age boundaries |
+| AdopterNotificationServiceTest | Notifications and adopter-specific access | Unsigned or staff sessions cannot access adopter notifications |
+| AdoptionApplicationFeatureTest | Application submission, review, cancellation, and preferences | Invalid applications are rejected without being saved |
+| AnalyticsServiceTest | Adoption frequencies, averages, and classification totals | Empty datasets, negative stay durations, and unknown records |
+| AnimalCsvExportServiceTest | CSV export formatting and record generation | Special characters are escaped and empty lists are supported |
+| ClassificationServiceTest | Hierarchical classification search, traversal, and rebuilding the tree from database rows | Missing classification paths, deep recursive searches, parent cycles, a node that is its own parent, and a missing parent id |
+| CombinedM3FeaturesTest | Profile management, passwords, waitlists, notifications, and receipts | Unauthorized profile access and withdrawal of another adopter's request |
+| CsvImportServiceTest | CSV parsing, validation, and importing | Malformed rows, quoted fields, and blank entries |
+| DatabaseConcurrencyTest | Concurrent database operations and transaction coordination | Simultaneous waitlist updates preserve unique adopters |
+| MyApplicationStatusServiceTest | Application and reservation status retrieval | Missing reservations and unauthenticated access |
+| PasswordPolicyTest | Password complexity validation | Too-short passwords, missing required characters, and null input |
+| PetPhotoStoreTest | Local photo persistence, retrieval, and deletion | Invalid images, unauthorized deletion, and exceeding eight photos |
+| ReservationServiceTest | Reservation creation, expiration, cancellation, and completion | Duplicate active reservations and unauthorized completion |
+| StatusHistoryServiceTest | Stack-based status history and undo | Undo on an empty history |
+| WaitlistServiceTest | FIFO queue operations, positions, and duplicate handling | Duplicate entries and operations on an empty queue |
+
+**Table 23. Graphical User Interface Tests**
+
+| Test Class | Functionality Tested | Representative Edge Case |
+|---|---|---|
+| AccountSettingsPanelLayoutTest | Account settings layout and scrolling | Buttons remain accessible when the window is resized |
+| AdopterNotificationDialogTest | Notification display and reservation updates | Empty notification state |
+| AnalyticsPanelInteractionTest | Analytics panel controls, chart updates, and refresh actions | Null reports and reports with no adoptions |
+| AnalyticsPanelTest | Analytics panel initialization and report display | Displaying a null analytics report |
+| AnimalBrowsePanelTest | Animal search, status filters, and adopter actions | Combined filtering without modifying original records |
+| AnimalStatusFilterTest | Animal status filtering | Search text containing regular-expression special characters |
+| AnimalTableModelTest | Animal table contents, columns, and row access | Invalid row index and defensive copy behavior |
+| ApplicationDetailsPanelTest | Application details, queue information, and reservation display | Active reservation displays the correct expiry information |
+| BarChartPanelTest | Bar-chart data rendering and formatting | Empty chart data and clearing existing values |
+| MainFrameIntegrationTest | Main window initialization and component integration | Required interface components remain available after initialization |
+| MainFrameKeyboardShortcutTest | Keyboard shortcuts and associated actions | Escape handling and shortcut bindings |
+| MyRecordsApiImagesTest | Image-source consistency, caching, and fallback behavior | Offline image failure keeps the placeholder without rapid retries |
+| MyRecordsPanelTest | Read-only adoption records and scrolling | Null input and records accessibility |
+| PawTrackCompleteGuiTest | Sidebar, tools page, and records navigation | Collapsed sidebar retains access to navigation |
+| PawTrackDarkModeContrastTest | Dark/light theme contrast and color restoration | Switching themes restores original text and cell colors |
+| PawTrackDarkModeFullContrastTest | Dark-mode readability across controls, charts, and dialogs | Chart labels and confirmation buttons remain readable |
+| PawTrackDarkModeTest | Theme palette, rounded cards, and theme switching | Repeated theme changes restore light-mode colors |
+| PawTrackDashboardRefreshTest | Dashboard statistics and refresh behavior | Adopter metrics remain limited to the signed-in adopter |
+| PawTrackDashboardTest | Staff/adopter statistics and quick actions | Adopter dashboard does not require staff-only data |
+| PawTrackKeyboardShortcutsTest | Navigation shortcut bindings | Shortcut actions delegate correctly |
+| PawTrackMessageDialogsTest | User-facing error messages and dialog titles | Blank dialog titles use a safe fallback |
+| PawTrackShellPolishTest | Navigation layout and action accessibility | Actions remain accessible in scrollable layouts |
+| PawTrackShellTest | Header and sidebar component setup | Missing required controls are rejected |
+| PawTrackTabNavigatorTest | Tab switching and dashboard refresh | Dashboard refresh occurs only for the dashboard tab |
+| PawTrackUnifiedGuiTest | Shared navigation, gallery/table filtering, and staff metrics | Gallery and table display the same filtered animal records |
+| PetPhotoGalleryPanelTest | Pet photo viewing and management | Existing locally stored photos remain visible to adopters |
+| PetProfilePanelTest | Animal profile display and browser callbacks | Dog and cat profiles use the same reusable component |
+| WaitlistActionsPanelTest | Waitlist action buttons and layout | Missing action buttons are rejected |
+| WaitlistEnhancedInteractionTest | Waitlist thumbnails and application review interactions | Selected application details remain connected to the current workflow |
+| WaitlistPanelTest | Waitlist table, actions, and scrolling | Table columns remain visible and read-only |
+
+### 8.3 Test Results and Quality Assessment
+
+The automated tests were executed using Maven Surefire with the JUnit Platform. The execution completed successfully, with all 272 tests passing across 62 test classes and no reported failures, errors, or skipped tests.
+
+The test scenarios demonstrate verification of both expected functionality and exceptional conditions. Important coverage areas include access control, database integrity, transaction rollback, FIFO waitlist behavior, concurrent database operations, API response handling, cancellation of a running CSV import, and graphical interface consistency.
+
+These results provide evidence that the tested components behave as expected under the included scenarios. However, a successful automated test run does not guarantee the absence of defects. Manual validation remains important for complete user workflows, external API availability, interface responsiveness, and deployment environments.
+
+### 9.2 Git Repository Contributions
+
+The team used Git and GitHub to manage source code, documentation, and project integration throughout development. Changes were organized through milestone and feature branches, with commits recording updates to assigned components.
+
+**Table 25. Git Contribution Summary**
+
+| Member | Non-Merge Commits |
+|---|---|
+| Sofia Yvonne Enovero | 75 |
+| Shann Michael Agang | 43 |
+| Cleint Lausa | 43 |
+| Kyle Cheznie Taghoy | 41 |
+| Aeisha Mae Elizar | 38 |
+| **Total** | **240** |
+
+The contribution counts were obtained using `git shortlog -sne --no-merges HEAD` on the project/week11 branch. Contributor identities were consolidated using Git's `.mailmap` configuration to account for inconsistent author email entries. Merge commits were excluded to avoid double-counting integration activities.
+
+## Appendix
+
+### Appendix A. Build and Run Instructions
+
+PawTrack requires a compatible Java Development Kit and Maven.
+
+```
+mvn.cmd clean package
+mvn.cmd exec:java
+```
+
+To run the packaged application:
+
+```
+java -jar target/pet-shelter-tracker.jar
+```
+
+### Appendix B. Automated Testing
+
+Automated tests use JUnit 5 and Maven Surefire.
+
+```
+mvn.cmd test
+```
+
+The [DATE] test run recorded 272 passing tests across 62 test classes, with zero failures, errors, or skipped tests. Reports are stored in `target/surefire-reports/`.
+
+### Appendix C. Known Limitations
+
+- **External APIs:** Dog CEO and TheCatAPI require internet access, and breed-specific images may not always be available.
+- **Local storage:** Application data and uploaded images are stored locally, so backups are recommended.
+- **Background processing:** CSV import, pet image retrieval, post-import reloading, and the connection check run in background workers. Analytics and animal refreshes after routine actions such as add, edit, or adopt still run on the event dispatch thread.
+- **Testing:** Automated tests do not replace manual testing of complete user workflows.
+
+### Appendix D. Supporting Materials
+
+- Repository: https://github.com/syqenov/cpe314--69323--capstone-team-03
+- Design document: `docs/design-document.md`
+- Diagrams: `docs/` (ERD, class hierarchy, concurrency, and analytics)
+- Sample data: `data/intake_history.csv`
+- Automated tests: `src/test/java/pawtrack/`
